@@ -82,11 +82,11 @@ namespace MyGame {
 		}
 
 		public void Populate(EventTrigger trigerArea) {
-			CharacterUserInterface.SetEvent(trigerArea, EventTriggerType.PointerDown, PointerDown);
-			CharacterUserInterface.SetEvent(trigerArea, EventTriggerType.PointerUp, PointerUp);
-			CharacterUserInterface.SetEvent(trigerArea, EventTriggerType.BeginDrag, StartDrag); // TODO rename StartDrag to BeginDrag?
-			CharacterUserInterface.SetEvent(trigerArea, EventTriggerType.Drag, ProcessValue); // TODO rename ProcessValue to Drag?
-			CharacterUserInterface.SetEvent(trigerArea, EventTriggerType.EndDrag, PointerUp); // TODO is this needed?
+			EventBind.SetEvent(trigerArea, EventTriggerType.PointerDown, PointerDown);
+			EventBind.SetEvent(trigerArea, EventTriggerType.PointerUp, PointerUp);
+			EventBind.SetEvent(trigerArea, EventTriggerType.BeginDrag, StartDrag); // TODO rename StartDrag to BeginDrag?
+			EventBind.SetEvent(trigerArea, EventTriggerType.Drag, ProcessValue); // TODO rename ProcessValue to Drag?
+			EventBind.SetEvent(trigerArea, EventTriggerType.EndDrag, PointerUp); // TODO is this needed?
 		}
 
 		public void Update() {
