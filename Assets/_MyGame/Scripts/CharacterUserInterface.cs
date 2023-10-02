@@ -30,7 +30,7 @@ namespace MyGame {
 
 			if (cameraDragRotationArea != null) {
 				MouseLook mouseLook = character.GetComponent<MouseLook>();
-				cameraDragRotationArea.OnDrag.AddListener(mouseLook.SetPitchYaw);
+				cameraDragRotationArea.OnDrag.AddListener(mouseLook.SetYawPitch);
 				mouseLook.useMouseMotion = false;
 			}
 			joystick.OnScaledPositionChange.AddListener(character.SetInput);
@@ -53,7 +53,7 @@ namespace MyGame {
 				};
 				eventTrigger.triggers.Add(entry);
 			}
-			entry.callback.RemoveAllListeners();
+			entry.callback.RemoveListener(action);
 			entry.callback.AddListener(action);
 		}
 	}

@@ -42,6 +42,10 @@ namespace MyGame {
 			scriptedPitchYaw = value;
 		}
 
+		public void SetYawPitch(Vector2 value) {
+			scriptedPitchYaw = new Vector2(-value.y, value.x);
+		}
+
 		private void Reset() {
 			Camera cam = Camera.main;
 			if (cam != null) {
