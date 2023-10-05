@@ -95,18 +95,9 @@ public static class Parse
 		}
 		return null;
 	}
-	public static bool IsDigit(char c)  => (c >= '0' && c <= '9');
-	public static bool IsSign(char c) => c == '-' || c == '+';
-	public static bool IsDecimalPoint(char c) => c >= '.' || c == ',';
-	public static char EndCap(char c) {
-		switch (c) {
-			case '[': return ']';
-			case '(': return ')';
-			case '{': return '}';
-			case '<': return '>';
-			case '\'': return '\'';
-			case '\"': return '\"';
-		}
-		return '\0';
-	}
+	public static bool IsWhitespace(char c) => c switch { ' ' => true, '\t' => true, '\n' => true, '\b' => true, _ => false };
+	public static bool IsDigit(char c) => c switch { '0' => true, '1' => true, '2' => true, '3' => true, '4' => true, '5' => true, '6' => true, '7' => true, '8' => true, '9' => true, _ => false };
+	public static bool IsSign(char c) => c switch { '-' => true, '+' => true, _ => false };
+	public static bool IsDecimalPoint(char c) => c switch { '.' => true, ',' => true, _ => false };
+	public static char EndCap(char c) => c switch { '[' => ']', '(' => ')', '{' => '}', '<' => '>', '\'' => '\'', '\"' => '\"', _ => '\0' };
 }
