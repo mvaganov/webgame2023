@@ -38,7 +38,7 @@ namespace MyGame {
 				object data = Objects.GetValue(i);
 				Row row;
 				if (rows.Count <= i) {
-					string name = GetName(data);
+					string name = GetName(data).ToString();
 					row = new Row(data, name, defaultCellSize.y);
 					rows.Add(row);
 				} else {
@@ -48,12 +48,19 @@ namespace MyGame {
 			}
 		}
 
-		public string GetName(object obj) {
+		public object GetName(object obj) {
 			switch (obj) {
 				case Object o: return o.name;
 				case null: return null;
 			}
 			return obj.ToString();
+		}
+		public Parse.Error SetName(object obj, object nameObj) {
+			string name = nameObj.ToString();
+			switch (obj) {
+				case Object o: o.name = name; return null;
+			}
+			return new Parse.Error($"Could not set {obj}.name = {nameObj}");
 		}
 
 		[System.Serializable]
@@ -61,10 +68,9 @@ namespace MyGame {
 			public string label;
 			public float width;
 			private System.Func<object, object> getData;
-			public System.Func<object, object> GetData {
-				get => getData;
-				set => getData = value;
-			}
+			private System.Func<object, object, Parse.Error> setData;
+			public System.Func<object, object> GetData { get => getData; set => getData = value; }
+			public System.Func<object, object, Parse.Error> SetData { get => setData; set => setData = value; }
 		}
 
 		[System.Serializable]
