@@ -4,16 +4,19 @@ using UnityEngine.UI;
 
 namespace MyGame {
 	public abstract class Spreadsheet : MonoBehaviour {
-		public RectTransform prefab_defaultCell;
+		//public RectTransform prefab_defaultCell;
 		[ContextMenuItem(nameof(GenerateColumnHeaders),nameof(GenerateColumnHeaders))]
 		public RectTransform ColumnHeadersArea;
 		[ContextMenuItem(nameof(GenerateRowHeaders), nameof(GenerateRowHeaders))]
 		public RectTransform RowHeadersArea;
+		public RectTransform ContentArea;
 		public Vector2 columnRowHeaderSize = new Vector2(100, 40);
 		public Vector2 defaultCellSize = new Vector2(100, 30);
 		public Vector2 cellPadding = new Vector2(2, 1);
 		public List<Column> columns = new List<Column>();
 		public List<Row> rows = new List<Row>();
+
+		public List<CellType> cellTypes = new List<CellType>();
 
 		public abstract System.Array Objects { get; set; }
 
@@ -23,6 +26,26 @@ namespace MyGame {
 			for (int i = 0; i < value.Length; i++) {
 				T obj = (T)value.GetValue(i);
 				_objects.Add(obj);
+			}
+		}
+
+		public RectTransform MakeNewCell(string type) {
+			int index = cellTypes.FindIndex(ct => ct.name == type);
+			if (index >= 0) {
+				return MakeNewCell(index);
+			}
+			return null;
+		}
+
+		public RectTransform MakeNewCell(int index) {
+			RectTransform cell = Instantiate(cellTypes[index].prefab.gameObject).GetComponent<RectTransform>();
+			cell.gameObject.SetActive(true);
+			return cell;
+		}
+
+		public void SetupCellTypes() {
+			for (int i = 0; i < cellTypes.Count; i++) {
+				cellTypes[i].prefab.gameObject.SetActive(false);
 			}
 		}
 
@@ -102,6 +125,12 @@ namespace MyGame {
 			}
 		}
 
+		[System.Serializable]
+		public class CellType {
+			public string name;
+			public RectTransform prefab;
+		}
+
 		private void DestroyFunction(GameObject go) {
 			if (Application.isPlaying) {
 				Destroy(go);
@@ -127,30 +156,90 @@ namespace MyGame {
 			ClearColumnHeaders();
 			float cursor = 0;
 			for(int i = 0; i < columns.Count; ++i) {
-				RectTransform cell = Instantiate(prefab_defaultCell.gameObject).GetComponent<RectTransform>();
+				RectTransform cell = MakeNewCell(0);
 				cell.SetParent(ColumnHeadersArea);
 				cell.anchoredPosition = new Vector2(cursor, 0);
+				cell.sizeDelta = new Vector2(columns[i].width, columnRowHeaderSize.y);
 				cursor += columns[i].width + cellPadding.x;
 				SetText(cell, columns[i].label);
 			}
 		}
 
+		public void GenerateRowHeaders() {
+			ClearRowHeaders();
+			float cursor = 0;
+			for (int i = 0; i < rows.Count; ++i) {
+				RectTransform cell = MakeNewCell(0);
+				cell.SetParent(RowHeadersArea);
+				cell.anchoredPosition = new Vector2(0, cursor);
+				cell.sizeDelta = new Vector2(columnRowHeaderSize.x, rows[i].height);
+				cursor -= rows[i].height + cellPadding.y;
+				SetText(cell, rows[i].label);
+			}
+		}
+
+		public void GenerateCells() {
+			Vector2 cursor = Vector2.zero;
+			for(int r = 0; r < rows.Count; ++r) {
+				Row row = rows[r];
+				cursor.x = 0;
+				for(int c = 0; c < row.output.Length; ++c) {
+					RectTransform cell = MakeNewCell(0);
+					cell.SetParent(ContentArea);
+					cell.anchoredPosition = cursor;
+					cell.sizeDelta = new Vector2(columns[c].width, rows[r].height);
+					cursor.x += columns[c].width + cellPadding.x;
+					SetText(cell, row.output[c]);
+				}
+				cursor.y -= row.height + cellPadding.y;
+			}
+			Debug.Log(cursor);
+			cursor.y *= -1;
+			cursor -= cellPadding;
+			ContentArea.sizeDelta = cursor;
+		}
+
 		public Object GetTextObject(RectTransform rect) {
-			InputField inf = rect.GetComponent<InputField>();
+			InputField inf = rect.GetComponentInChildren<InputField>();
 			if (inf != null) { return inf; }
+			TMPro.TMP_InputField tmpinf = rect.GetComponentInChildren<TMPro.TMP_InputField>();
+			if (tmpinf != null) { return tmpinf; }
+			Text txt = rect.GetComponentInChildren<Text>();
+			if (txt != null) { return txt; }
+			TMPro.TMP_Text tmptxt = rect.GetComponentInChildren<TMPro.TMP_Text>();
+			if (tmptxt != null) { return tmptxt; }
 			return null;
 		}
 
 		public void SetText(Object rect, string text) {
 			switch (rect) {
-				case RectTransform rt:
-					SetText(GetTextObject(rt), text);
-					break;
+				case null: break;
+				case GameObject go: SetText(go.GetComponent<RectTransform>(), text); break;
+				case RectTransform rt: SetText(GetTextObject(rt), text); break;
+				case InputField inf: inf.text = text; break;
+				case Text txt: txt.text = text; break;
+				case TMPro.TMP_InputField tmpinf: tmpinf.text = text; break;
+				case TMPro.TMP_Text tmptxt: tmptxt.text = text; break;
+				case MonoBehaviour mb: SetText(mb.GetComponent<RectTransform>(), text); break;
 			}
 		}
 
-		public void GenerateRowHeaders() {
-			ClearRowHeaders();
+		public void AdjustColumnHeaders(Vector2 scroll) {
+			if (scroll.x == 0) {
+				return;
+			}
+			Vector2 position = ColumnHeadersArea.anchoredPosition;
+			position.x = ContentArea.anchoredPosition.x;
+			ColumnHeadersArea.anchoredPosition = position;
+		}
+
+		public void AdjustRowHeaders(Vector2 scroll) {
+			if (scroll.y == 0) {
+				return;
+			}
+			Vector2 position = RowHeadersArea.anchoredPosition;
+			position.y = ContentArea.anchoredPosition.y;
+			RowHeadersArea.anchoredPosition = position;
 		}
 	}
 }

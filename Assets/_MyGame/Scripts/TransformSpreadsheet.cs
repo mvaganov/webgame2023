@@ -68,7 +68,11 @@ namespace MyGame {
 		}
 
 		private void Start() {
+			SetupCellTypes();
 			Refresh();
+			GenerateColumnHeaders();
+			GenerateRowHeaders();
+			GenerateCells();
 		}
 	}
 }
