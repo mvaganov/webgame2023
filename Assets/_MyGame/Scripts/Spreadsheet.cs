@@ -1,11 +1,17 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace MyGame {
 	public abstract class Spreadsheet : MonoBehaviour {
+		public RectTransform prefab_defaultCell;
+		[ContextMenuItem(nameof(GenerateColumnHeaders),nameof(GenerateColumnHeaders))]
+		public RectTransform ColumnHeadersArea;
+		[ContextMenuItem(nameof(GenerateRowHeaders), nameof(GenerateRowHeaders))]
+		public RectTransform RowHeadersArea;
 		public Vector2 columnRowHeaderSize = new Vector2(100, 40);
-		public GameObject prefab_defaultCell;
 		public Vector2 defaultCellSize = new Vector2(100, 30);
+		public Vector2 cellPadding = new Vector2(2, 1);
 		public List<Column> columns = new List<Column>();
 		public List<Row> rows = new List<Row>();
 
@@ -94,6 +100,57 @@ namespace MyGame {
 					}
 				}
 			}
+		}
+
+		private void DestroyFunction(GameObject go) {
+			if (Application.isPlaying) {
+				Destroy(go);
+			} else {
+				DestroyImmediate(go);
+			}
+		}
+
+		public void ClearCells(RectTransform parent) {
+			for(int i = parent.childCount-1; i >= 0; --i) {
+				DestroyFunction(parent.GetChild(i).gameObject);
+			}
+		}
+
+		public void ClearColumnHeaders() {
+			ClearCells(ColumnHeadersArea);
+		}
+		public void ClearRowHeaders() {
+			ClearCells(RowHeadersArea);
+		}
+
+		public void GenerateColumnHeaders() {
+			ClearColumnHeaders();
+			float cursor = 0;
+			for(int i = 0; i < columns.Count; ++i) {
+				RectTransform cell = Instantiate(prefab_defaultCell.gameObject).GetComponent<RectTransform>();
+				cell.SetParent(ColumnHeadersArea);
+				cell.anchoredPosition = new Vector2(cursor, 0);
+				cursor += columns[i].width + cellPadding.x;
+				SetText(cell, columns[i].label);
+			}
+		}
+
+		public Object GetTextObject(RectTransform rect) {
+			InputField inf = rect.GetComponent<InputField>();
+			if (inf != null) { return inf; }
+			return null;
+		}
+
+		public void SetText(Object rect, string text) {
+			switch (rect) {
+				case RectTransform rt:
+					SetText(GetTextObject(rt), text);
+					break;
+			}
+		}
+
+		public void GenerateRowHeaders() {
+			ClearRowHeaders();
 		}
 	}
 }
