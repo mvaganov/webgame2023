@@ -1,8 +1,9 @@
+using Spreadsheet;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace MyGame {
-	public class TransformSpreadsheet : Spreadsheet {
+	public class TransformSpreadsheet : Spreadsheet.Spreadsheet {
 
 		public Transform GetT(object o) {
 			switch (o) {

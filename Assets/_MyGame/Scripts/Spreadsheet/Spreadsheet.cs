@@ -2,9 +2,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace MyGame {
+namespace Spreadsheet {
 	public abstract class Spreadsheet : MonoBehaviour {
-		//public RectTransform prefab_defaultCell;
+		[System.Serializable]
+		public class CellType {
+			public string name;
+			public RectTransform prefab;
+		}
+
 		[ContextMenuItem(nameof(GenerateColumnHeaders),nameof(GenerateColumnHeaders))]
 		public RectTransform ColumnHeadersArea;
 		[ContextMenuItem(nameof(GenerateRowHeaders), nameof(GenerateRowHeaders))]
@@ -15,10 +20,48 @@ namespace MyGame {
 		public Vector2 cellPadding = new Vector2(2, 1);
 		public List<Column> columns = new List<Column>();
 		public List<Row> rows = new List<Row>();
-
 		public List<CellType> cellTypes = new List<CellType>();
-
+		public List<CellSelection> selection = new List<CellSelection>();
+		public CellPosition currentCellPosition;
+		public CellSelection currentCellSelection;
 		public abstract System.Array Objects { get; set; }
+
+		public void Select(int row, int column) {
+			selection.Clear();
+			selection.Add(new CellSelection(row, column));
+		}
+
+		public void ToggleSelection(int row, int column, bool toggle) {
+			CellSelection selected = new CellSelection(row, column);
+			int index = selection.IndexOf(selected);
+			if (index < 0) {
+				selection.Add(selected);
+			} else {
+				selection.RemoveAt(index);
+			}
+		}
+
+		public void AddSelection(int row, int column) {
+			CellPosition position = new CellPosition(row, column);
+			AddSelection(position);
+		}
+
+		public void AddSelection(CellPosition position) {
+			Debug.Log("adding " + position);
+			CellSelection selected = new CellSelection(position);
+			int index = selection.IndexOf(selected);
+			if (index < 0) {
+				selection.Add(selected);
+			}
+		}
+
+		public void RemoveSelection(int row, int column) {
+			CellSelection selected = new CellSelection(row, column);
+			int index = selection.IndexOf(selected);
+			if (index >= 0) {
+				selection.RemoveAt(index);
+			}
+		}
 
 		public void SetObjects<T>(List<T> _objects, System.Array value) {
 			_objects.Clear();
@@ -29,17 +72,18 @@ namespace MyGame {
 			}
 		}
 
-		public RectTransform MakeNewCell(string type) {
+		public RectTransform MakeNewCell(string type, int row, int column) {
 			int index = cellTypes.FindIndex(ct => ct.name == type);
 			if (index >= 0) {
-				return MakeNewCell(index);
+				return MakeNewCell(index, row, column);
 			}
 			return null;
 		}
 
-		public RectTransform MakeNewCell(int index) {
+		public RectTransform MakeNewCell(int index, int row, int column) {
 			RectTransform cell = Instantiate(cellTypes[index].prefab.gameObject).GetComponent<RectTransform>();
 			cell.gameObject.SetActive(true);
+			Cell.Set(cell.gameObject, this, row, column);
 			return cell;
 		}
 
@@ -84,51 +128,13 @@ namespace MyGame {
 			}
 			return obj.ToString();
 		}
+
 		public Parse.Error SetName(object obj, object nameObj) {
 			string name = nameObj.ToString();
 			switch (obj) {
 				case Object o: o.name = name; return null;
 			}
 			return new Parse.Error($"Could not set {obj}.name = {nameObj}");
-		}
-
-		[System.Serializable]
-		public class Column {
-			public string label;
-			public float width;
-			private System.Func<object, object> getData;
-			private System.Func<object, object, Parse.Error> setData;
-			public System.Func<object, object> GetData { get => getData; set => getData = value; }
-			public System.Func<object, object, Parse.Error> SetData { get => setData; set => setData = value; }
-		}
-
-		[System.Serializable]
-		public class Row {
-			public string label;
-			public float height;
-			public string[] output;
-			[SerializeField] private object _data;
-			public object data { get => _data; set => _data = value; }
-			public Row(object data, string label, float height) {
-				this._data = data;
-				this.label = label;
-				this.height = height;
-			}
-			public void Render(IList<Column> columns) {
-				output = new string[columns.Count];
-				for (int i = 0; i < columns.Count; i++) {
-					object result = columns[i].GetData.Invoke(data);
-					if (result != null) {
-						output[i] = result.ToString();
-					}
-				}
-			}
-		}
-
-		[System.Serializable]
-		public class CellType {
-			public string name;
-			public RectTransform prefab;
 		}
 
 		private void DestroyFunction(GameObject go) {
@@ -148,6 +154,7 @@ namespace MyGame {
 		public void ClearColumnHeaders() {
 			ClearCells(ColumnHeadersArea);
 		}
+
 		public void ClearRowHeaders() {
 			ClearCells(RowHeadersArea);
 		}
@@ -156,26 +163,32 @@ namespace MyGame {
 			ClearColumnHeaders();
 			float cursor = 0;
 			for(int i = 0; i < columns.Count; ++i) {
-				RectTransform cell = MakeNewCell(0);
+				RectTransform cell = MakeNewCell(1, -1, i);
 				cell.SetParent(ColumnHeadersArea);
 				cell.anchoredPosition = new Vector2(cursor, 0);
 				cell.sizeDelta = new Vector2(columns[i].width, columnRowHeaderSize.y);
 				cursor += columns[i].width + cellPadding.x;
 				SetText(cell, columns[i].label);
+				cell.name = columns[i].label;
 			}
+			cursor -= cellPadding.x;
+			ColumnHeadersArea.sizeDelta = new Vector2(cursor, columnRowHeaderSize.y);
 		}
 
 		public void GenerateRowHeaders() {
 			ClearRowHeaders();
 			float cursor = 0;
 			for (int i = 0; i < rows.Count; ++i) {
-				RectTransform cell = MakeNewCell(0);
+				RectTransform cell = MakeNewCell(0, i, -1);
 				cell.SetParent(RowHeadersArea);
-				cell.anchoredPosition = new Vector2(0, cursor);
+				cell.anchoredPosition = new Vector2(0, -cursor);
 				cell.sizeDelta = new Vector2(columnRowHeaderSize.x, rows[i].height);
-				cursor -= rows[i].height + cellPadding.y;
+				cursor += rows[i].height + cellPadding.y;
 				SetText(cell, rows[i].label);
+				cell.name = rows[i].label;
 			}
+			cursor -= cellPadding.y;
+			RowHeadersArea.sizeDelta = new Vector2(columnRowHeaderSize.x, cursor);
 		}
 
 		public void GenerateCells() {
@@ -184,12 +197,13 @@ namespace MyGame {
 				Row row = rows[r];
 				cursor.x = 0;
 				for(int c = 0; c < row.output.Length; ++c) {
-					RectTransform cell = MakeNewCell(0);
+					RectTransform cell = MakeNewCell(columns[c].cellType, r, c);
 					cell.SetParent(ContentArea);
 					cell.anchoredPosition = cursor;
 					cell.sizeDelta = new Vector2(columns[c].width, rows[r].height);
 					cursor.x += columns[c].width + cellPadding.x;
 					SetText(cell, row.output[c]);
+					cell.name = row.output[c];
 				}
 				cursor.y -= row.height + cellPadding.y;
 			}
@@ -225,21 +239,11 @@ namespace MyGame {
 		}
 
 		public void AdjustColumnHeaders(Vector2 scroll) {
-			if (scroll.x == 0) {
-				return;
-			}
-			Vector2 position = ColumnHeadersArea.anchoredPosition;
-			position.x = ContentArea.anchoredPosition.x;
-			ColumnHeadersArea.anchoredPosition = position;
+			ColumnHeadersArea.anchoredPosition = new Vector2(ContentArea.anchoredPosition.x, ColumnHeadersArea.anchoredPosition.y);
 		}
 
 		public void AdjustRowHeaders(Vector2 scroll) {
-			if (scroll.y == 0) {
-				return;
-			}
-			Vector2 position = RowHeadersArea.anchoredPosition;
-			position.y = ContentArea.anchoredPosition.y;
-			RowHeadersArea.anchoredPosition = position;
+			RowHeadersArea.anchoredPosition = new Vector2(RowHeadersArea.anchoredPosition.x, ContentArea.anchoredPosition.y);
 		}
 	}
 }
