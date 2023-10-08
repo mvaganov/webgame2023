@@ -22,46 +22,51 @@ namespace Spreadsheet {
 		public List<Row> rows = new List<Row>();
 		public List<CellType> cellTypes = new List<CellType>();
 		public List<CellSelection> selection = new List<CellSelection>();
+		private bool _selecting;
 		public CellPosition currentCellPosition;
 		public CellSelection currentCellSelection;
+		public List<Cell> cells = new List<Cell>();
+
+		public ColorBlock colorBlock;
+
 		public abstract System.Array Objects { get; set; }
 
-		public void Select(int row, int column) {
-			selection.Clear();
-			selection.Add(new CellSelection(row, column));
-		}
+		//public void Select(int row, int column) {
+		//	selection.Clear();
+		//	selection.Add(new CellSelection(row, column));
+		//}
 
-		public void ToggleSelection(int row, int column, bool toggle) {
-			CellSelection selected = new CellSelection(row, column);
-			int index = selection.IndexOf(selected);
-			if (index < 0) {
-				selection.Add(selected);
-			} else {
-				selection.RemoveAt(index);
-			}
-		}
+		//public void ToggleSelection(int row, int column, bool toggle) {
+		//	CellSelection selected = new CellSelection(row, column);
+		//	int index = selection.IndexOf(selected);
+		//	if (index < 0) {
+		//		selection.Add(selected);
+		//	} else {
+		//		selection.RemoveAt(index);
+		//	}
+		//}
 
-		public void AddSelection(int row, int column) {
-			CellPosition position = new CellPosition(row, column);
-			AddSelection(position);
-		}
+		//public void AddSelection(int row, int column) {
+		//	CellPosition position = new CellPosition(row, column);
+		//	AddSelection(position);
+		//}
 
-		public void AddSelection(CellPosition position) {
-			Debug.Log("adding " + position);
-			CellSelection selected = new CellSelection(position);
-			int index = selection.IndexOf(selected);
-			if (index < 0) {
-				selection.Add(selected);
-			}
-		}
+		//public void AddSelection(CellPosition position) {
+		//	Debug.Log("adding " + position);
+		//	CellSelection selected = new CellSelection(position);
+		//	int index = selection.IndexOf(selected);
+		//	if (index < 0) {
+		//		selection.Add(selected);
+		//	}
+		//}
 
-		public void RemoveSelection(int row, int column) {
-			CellSelection selected = new CellSelection(row, column);
-			int index = selection.IndexOf(selected);
-			if (index >= 0) {
-				selection.RemoveAt(index);
-			}
-		}
+		//public void RemoveSelection(int row, int column) {
+		//	CellSelection selected = new CellSelection(row, column);
+		//	int index = selection.IndexOf(selected);
+		//	if (index >= 0) {
+		//		selection.RemoveAt(index);
+		//	}
+		//}
 
 		public void SetObjects<T>(List<T> _objects, System.Array value) {
 			_objects.Clear();
@@ -156,6 +161,9 @@ namespace Spreadsheet {
 		}
 
 		public void ClearRowHeaders() {
+			for(int i = 0; i < rows.Count; ++i) {
+				rows[i].ClearCellLookupTable();
+			}
 			ClearCells(RowHeadersArea);
 		}
 
@@ -193,21 +201,25 @@ namespace Spreadsheet {
 
 		public void GenerateCells() {
 			Vector2 cursor = Vector2.zero;
+			cells.Clear();
 			for(int r = 0; r < rows.Count; ++r) {
 				Row row = rows[r];
 				cursor.x = 0;
-				for(int c = 0; c < row.output.Length; ++c) {
-					RectTransform cell = MakeNewCell(columns[c].cellType, r, c);
-					cell.SetParent(ContentArea);
-					cell.anchoredPosition = cursor;
-					cell.sizeDelta = new Vector2(columns[c].width, rows[r].height);
+				Cell[] rowLookupTable = row.GetCellLookupTable(true);
+				for (int c = 0; c < row.output.Length; ++c) {
+					RectTransform cellRect = MakeNewCell(columns[c].cellType, r, c);
+					Cell cell = cellRect.GetComponent<Cell>();
+					rowLookupTable[c] = cell;
+					cellRect.SetParent(ContentArea);
+					cellRect.anchoredPosition = cursor;
+					cellRect.sizeDelta = new Vector2(columns[c].width, rows[r].height);
 					cursor.x += columns[c].width + cellPadding.x;
-					SetText(cell, row.output[c]);
-					cell.name = row.output[c];
+					SetText(cellRect, row.output[c]);
+					cellRect.name = row.output[c];
+
 				}
 				cursor.y -= row.height + cellPadding.y;
 			}
-			Debug.Log(cursor);
 			cursor.y *= -1;
 			cursor -= cellPadding;
 			ContentArea.sizeDelta = cursor;
@@ -244,6 +256,39 @@ namespace Spreadsheet {
 
 		public void AdjustRowHeaders(Vector2 scroll) {
 			RowHeadersArea.anchoredPosition = new Vector2(RowHeadersArea.anchoredPosition.x, ContentArea.anchoredPosition.y);
+		}
+
+		public void CellPointerDown(Cell cell) {
+			_selecting = true;
+			cell.Selected = true;
+			currentCellSelection = new CellSelection(cell.position);
+			UpdateSelection();
+		}
+
+		public void CellPointerMove(Cell cell) {
+			if (_selecting) {
+				currentCellSelection.End = cell.position;
+				UpdateSelection();
+			}
+		}
+
+		private void UpdateSelection() {
+			for(int r = 0; r < rows.Count; ++r) {
+				Row row = rows[r];
+				Cell[] cells = row.GetCellLookupTable(false);
+				if (cells == null) {
+					continue;
+				}
+				for (int c = 0; c < cells.Length; ++c) {
+					Cell cell = cells[c];
+					cell.Selected = currentCellSelection.Contains(cell.position);
+				}
+			}
+		}
+
+		public void CellPointerUp(Cell cell) {
+			UpdateSelection();
+			_selecting = false;
 		}
 	}
 }

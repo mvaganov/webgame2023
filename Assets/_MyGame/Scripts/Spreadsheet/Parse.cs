@@ -13,7 +13,9 @@ namespace Spreadsheet {
 			public object metadata;
 			public bool IsError => err != null;
 			public Error(string error) { err = error; }
-
+			public Error(string error, string str, int line, int letter) {
+				err = error; this.str = str; this.line = line; this.letter = letter;
+			}
 		}
 		public static Parse.Error ConvertFloatsList(object value, ref float[] result) {
 			switch (value) {

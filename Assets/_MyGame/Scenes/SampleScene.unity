@@ -234,7 +234,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0.00018747489}
+  m_AnchoredPosition: {x: 0, y: -0.000029921532}
   m_SizeDelta: {x: 503, y: 300}
   m_Pivot: {x: 0, y: 1}
 --- !u!1 &136297086
@@ -1432,6 +1432,22 @@ MonoBehaviour:
   currentCellPosition:
     Row: 0
     Column: 0
+  currentCellSelection:
+    Start:
+      Row: 0
+      Column: 0
+    End:
+      Row: 0
+      Column: 0
+  cells: []
+  colorBlock:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.81960785, g: 0.98039216, b: 0.5411765, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.70980394, g: 1, b: 0.88235295, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
   _objects:
   - {fileID: 136297086}
   - {fileID: 963194225}
@@ -1878,7 +1894,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1991678733}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.99998534
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -2276,9 +2292,9 @@ MonoBehaviour:
   m_Transition: 1
   m_Colors:
     m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
-    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_HighlightedColor: {r: 0.8200825, g: 0.9811321, b: 0.5405482, a: 1}
     m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
-    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_SelectedColor: {r: 0.71132076, g: 1, b: 0.8831143, a: 1}
     m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1

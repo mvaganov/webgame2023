@@ -1,10 +1,38 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Spreadsheet {
-	public class Cell : MonoBehaviour, IDragHandler, IBeginDragHandler, IEndDragHandler {
+	public class Cell : MonoBehaviour, IPointerDownHandler, IPointerMoveHandler, IPointerUpHandler {
 		public CellPosition position;
 		public Spreadsheet spreadsheet;
+		[SerializeField]
+		private bool _selected;
+		private Selectable _selectable;
+
+		public bool Selected {
+			get => _selected;
+			set {
+				if (_selected != value) {
+					if (value) {
+						SetColor(spreadsheet.colorBlock.selectedColor);
+					} else {
+						SetColor(spreadsheet.colorBlock.normalColor);
+					}
+				}
+				_selected = value;
+			}
+		}
+
+		public void SetColor(Color color) {
+			ColorBlock block = _selectable.colors;
+			block.normalColor = color;
+			_selectable.colors = block;
+		}
+
+		private void Awake() {
+			_selectable = GetComponent<Selectable>();
+		}
 
 		public static void Set(GameObject gameObject, Spreadsheet speradsheet, int row, int column) {
 			Cell cell = gameObject.GetComponent<Cell>();
@@ -15,19 +43,10 @@ namespace Spreadsheet {
 			cell.position = new CellPosition(row, column);
 		}
 
-		public void AddToSelection() {
-			spreadsheet.AddSelection(position);
-		}
+		public void OnPointerMove(PointerEventData eventData) => spreadsheet.CellPointerMove(this);
 
-		public void OnBeginDrag(PointerEventData eventData) {
-			spreadsheet.AddSelection(position);
-		}
+		public void OnPointerDown(PointerEventData eventData) => spreadsheet.CellPointerDown(this);
 
-		public void OnDrag(PointerEventData eventData) {
-			spreadsheet.AddSelection(position);
-		}
-
-		public void OnEndDrag(PointerEventData eventData) {
-		}
+		public void OnPointerUp(PointerEventData eventData) => spreadsheet.CellPointerUp(this);
 	}
 }
