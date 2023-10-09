@@ -8,6 +8,7 @@ namespace Spreadsheet {
 		public int Row, Column;
 		public bool IsEntireRow { get => Column < 0; set => Column = (value != IsEntireRow) ? ~Column : Column; }
 		public bool IsEntireColumn { get => Row < 0; set => Row = (value != IsEntireColumn) ? ~Row : Row; }
+		public bool IsNormalPosition { get => Column >= 0 && Row >= 0; }
 		public CellPosition(int row, int column) { Row = row; Column = column; }
 		public bool Equals(CellPosition other) => Row == other.Row && Column == other.Column;
 		public static bool operator ==(CellPosition left, CellPosition right) => left.Equals(right);
@@ -85,6 +86,9 @@ namespace Spreadsheet {
 	[System.Serializable]
 	public struct CellSelection {
 		public CellPosition Start, End;
+
+		public int Area { get => (Math.Abs(Start.Row - End.Row) + 1) * (Math.Abs(Start.Column - End.Column) + 1); }
+
 		public CellSelection(int row, int column) : this (new CellPosition(row, column)) { }
 		public CellSelection(CellPosition position) { Start = End = position; }
 		public bool Equals(CellSelection other) => Start == other.Start && End == other.End;

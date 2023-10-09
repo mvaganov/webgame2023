@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Spreadsheet {
@@ -26,47 +27,15 @@ namespace Spreadsheet {
 		public CellPosition currentCellPosition;
 		public CellSelection currentCellSelection;
 		public List<Cell> cells = new List<Cell>();
+		private Cell selectedCell;
+		private PointerEventData _fakePointerEventData;
 
-		public ColorBlock colorBlock;
+		public Color multiSelectColor;
 
 		public abstract System.Array Objects { get; set; }
 
-		//public void Select(int row, int column) {
-		//	selection.Clear();
-		//	selection.Add(new CellSelection(row, column));
-		//}
-
-		//public void ToggleSelection(int row, int column, bool toggle) {
-		//	CellSelection selected = new CellSelection(row, column);
-		//	int index = selection.IndexOf(selected);
-		//	if (index < 0) {
-		//		selection.Add(selected);
-		//	} else {
-		//		selection.RemoveAt(index);
-		//	}
-		//}
-
-		//public void AddSelection(int row, int column) {
-		//	CellPosition position = new CellPosition(row, column);
-		//	AddSelection(position);
-		//}
-
-		//public void AddSelection(CellPosition position) {
-		//	Debug.Log("adding " + position);
-		//	CellSelection selected = new CellSelection(position);
-		//	int index = selection.IndexOf(selected);
-		//	if (index < 0) {
-		//		selection.Add(selected);
-		//	}
-		//}
-
-		//public void RemoveSelection(int row, int column) {
-		//	CellSelection selected = new CellSelection(row, column);
-		//	int index = selection.IndexOf(selected);
-		//	if (index >= 0) {
-		//		selection.RemoveAt(index);
-		//	}
-		//}
+		public PointerEventData FakePointerEventData => _fakePointerEventData != null ? _fakePointerEventData
+			: _fakePointerEventData = new PointerEventData(EventSystem.current);
 
 		public void SetObjects<T>(List<T> _objects, System.Array value) {
 			_objects.Clear();
@@ -261,6 +230,8 @@ namespace Spreadsheet {
 		public void CellPointerDown(Cell cell) {
 			_selecting = true;
 			cell.Selected = true;
+			selectedCell = cell;
+			cell.SelectableComponent.OnSelect(null);
 			currentCellSelection = new CellSelection(cell.position);
 			UpdateSelection();
 		}
@@ -283,6 +254,10 @@ namespace Spreadsheet {
 					Cell cell = cells[c];
 					cell.Selected = currentCellSelection.Contains(cell.position);
 				}
+			}
+			if (currentCellSelection.Area > 1) {
+				selectedCell.SelectableComponent.OnPointerUp(FakePointerEventData);
+				selectedCell.SelectableComponent.OnDeselect(null);
 			}
 		}
 

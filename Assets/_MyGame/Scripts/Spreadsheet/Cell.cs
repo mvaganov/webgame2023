@@ -9,15 +9,18 @@ namespace Spreadsheet {
 		[SerializeField]
 		private bool _selected;
 		private Selectable _selectable;
+		private Color _normalColor;
+
+		public Selectable SelectableComponent => _selectable;
 
 		public bool Selected {
 			get => _selected;
 			set {
-				if (_selected != value) {
+				if (_selected != value && position.IsNormalPosition) {
 					if (value) {
-						SetColor(spreadsheet.colorBlock.selectedColor);
+						SetColor(spreadsheet.multiSelectColor);
 					} else {
-						SetColor(spreadsheet.colorBlock.normalColor);
+						SetColor(_normalColor);
 					}
 				}
 				_selected = value;
@@ -32,6 +35,7 @@ namespace Spreadsheet {
 
 		private void Awake() {
 			_selectable = GetComponent<Selectable>();
+			_normalColor = _selectable.colors.normalColor;
 		}
 
 		public static void Set(GameObject gameObject, Spreadsheet speradsheet, int row, int column) {

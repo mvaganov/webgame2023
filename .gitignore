@@ -73,3 +73,7 @@ crashlytics-build.properties
 
 # other project files
 .vsconfig
+
+# TMPro
+/[Aa]ssets/TextMesh\ Pro/*
+/[Aa]ssets/TextMesh\ Pro.meta
