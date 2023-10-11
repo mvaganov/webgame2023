@@ -57,62 +57,91 @@ namespace Spreadsheet {
 			return new Parse.Error($"unable to parse type {value.GetType()}");
 		}
 		public static Parse.Error ParseText(string text, ref int index, List<object> out_tokens, System.Func<char, bool> isFinished) {
-			char expectedFinish = '\0';
 			int tokenStart = -1, tokenEnd = -1;
-			int addedElements = 0;
-			bool addingString = false;
-			bool readingWhitespace = false;
-			List<char> letters = new List<char>();
+			bool readingDigits = false;
+			bool readingFloat = false;
+			bool readingToken = false;
+			List<char> parenthesisNesting = new List<char>();
+			int loopguard = 0;
 			while (index < text.Length) {
+				if (loopguard++ > 1000) {
+					throw new System.Exception("loop broken! "+index+" @ "+text.Substring(0, index)+"|"+text.Substring(index));
+				}
 				char c = text[index];
-				switch (c) {
-					case '[':
-					case '(':
-					case '{':
-					case '<':
-						expectedFinish = EndCap(c);
-
-						if (tokenStart >= 0 && tokenEnd < 0) {
-							tokenEnd = index;
+				if (IsWhiteSpace(c)) {
+					if (tokenStart >= 0) {
+						tokenEnd = index;
+					} else {
+						++index;
+						continue;
+					}
+				} else if (IsDigit(c)) {
+					if (readingDigits || readingToken) {
+						++index;
+						continue;
+					} else if (tokenStart < 0) {
+						tokenStart = index;
+						readingDigits = true;
+					}
+				} else if (IsLetter(c)) {
+					if (readingDigits) {
+						tokenEnd = index;
+						readingToken = true;
+					} else if (readingToken) {
+						++index;
+						continue;
+					}
+				} else if (IsComma(c)) {
+					if (tokenStart < 0) {
+						tokenStart = index;
+					}
+					tokenEnd = index;
+				} else {
+					int last = parenthesisNesting.Count - 1;
+					if (last >= 0 && parenthesisNesting[last] == c) {
+						parenthesisNesting.RemoveAt(last);
+						if (parenthesisNesting.Count == 0 && isFinished != null && isFinished.Invoke(c)) {
+							++index;
+							return null;
 						}
-						break;
-					case '\'':
-					case '\"':
-						addingString = true;
-						break;
-					case ' ':
-					case '\t':
-					case '\n':
-					case '\r':
-
-						break;
-					case '-':
-					case '.':
-					case '0':
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
-					case '6':
-					case '7':
-					case '8':
-					case '9':
-						if (tokenStart < 0) {
-							tokenStart = index;
+					} else if (!readingToken && IsDecimalPoint(c) && !readingFloat) {
+						readingFloat = true;
+						++index;
+						continue;
+					} else if (IsSign(c) && !readingDigits && !readingToken) {
+						char nextChar = ((index + 1) < text.Length) ? text[index + 1] : '\0';
+						if (IsDigit(nextChar)) {
+							readingDigits = true;
+							++index;
+							continue;
 						}
-						break;
-					default:
-						break;
+					}
+					char expectedFinish = EndCap(c);
+					if (expectedFinish != '\0') {
+						parenthesisNesting.Add(expectedFinish);
+					}
+				}
+				if (tokenEnd >= 0) {
+					string token = text.Substring(tokenStart, tokenEnd - tokenStart);
+					if (readingDigits) {
+						double number = double.Parse(token);
+						out_tokens.Add(number);
+					} else {
+						out_tokens.Add(token);
+					}
+					tokenEnd = -1;
+					continue;
 				}
 				++index;
 			}
 			return null;
 		}
-		public static bool IsWhitespace(char c) => c switch { ' ' => true, '\t' => true, '\n' => true, '\b' => true, _ => false };
+		public static bool IsWhiteSpace(char c) => c switch { ' ' => true, '\t' => true, '\n' => true, '\b' => true, _ => false };
 		public static bool IsDigit(char c) => c switch { '0' => true, '1' => true, '2' => true, '3' => true, '4' => true, '5' => true, '6' => true, '7' => true, '8' => true, '9' => true, _ => false };
 		public static bool IsSign(char c) => c switch { '-' => true, '+' => true, _ => false };
-		public static bool IsDecimalPoint(char c) => c switch { '.' => true, ',' => true, _ => false };
+		public static bool IsDecimalPoint(char c) => c switch { '.' => true, _ => false };
+		public static bool IsComma(char c) => c switch { ',' => true, _ => false };
+		public static bool IsLetter(char c) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 		public static char EndCap(char c) => c switch { '[' => ']', '(' => ')', '{' => '}', '<' => '>', '\'' => '\'', '\"' => '\"', _ => '\0' };
 	}
 }
