@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace Spreadsheet {
 	[System.Serializable]
@@ -9,7 +11,10 @@ namespace Spreadsheet {
 		public string[] output;
 		[SerializeField] private object _data;
 		private Cell[] cells;
+		public Cell headerCell;
 		public object data { get => _data; set => _data = value; }
+		public Cell[] Cells => cells;
+		public System.Func<string, Parse.Error> setHeader;
 		public Row(object data, string label, float height) {
 			this._data = data;
 			this.label = label;
@@ -29,7 +34,8 @@ namespace Spreadsheet {
 			if (cells == null) {
 				return;
 			}
-			for(int i = 0; i < cells.Length; ++i) {
+			Debug.Log("CLEATING CELL LOOKUPTABLE!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			for (int i = 0; i < cells.Length; ++i) {
 				cells[i] = null;
 			}
 			s_allocatedCells.Add(cells);
@@ -50,5 +56,23 @@ namespace Spreadsheet {
 		}
 
 		private static List<Cell[]> s_allocatedCells = new List<Cell[]>();
+
+		public void Refresh(Spreadsheet sheet) {
+			Render(sheet.columns);
+			if (cells == null || cells.Length == 0) { return; }
+			for (int i = 0; i < cells.Length; ++i) {
+				if (cells[i] == null) {
+					continue;
+				}
+				Spreadsheet.SetText(cells[i], output[i]);
+			}
+		}
+		public void AssignHeaderSetFunction() {
+			UnityEvent<string> submitEvent = Spreadsheet.GetTextSubmitEvent(headerCell.GetComponent<RectTransform>());
+			if (submitEvent == null) { return; }
+			submitEvent.RemoveAllListeners();
+			submitEvent.AddListener(SetLabel);
+		}
+		public void SetLabel(string value) => label = value;
 	}
 }

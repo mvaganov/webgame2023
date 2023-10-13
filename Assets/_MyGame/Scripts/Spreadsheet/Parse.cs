@@ -18,6 +18,7 @@ namespace Spreadsheet {
 			public Error(string error, string str, int line, int letter) {
 				err = error; this.str = str; this.line = line; this.letter = letter;
 			}
+			public override string ToString() => err;
 		}
 		public static Parse.Error ConvertFloatsList(object value, ref float[] result) {
 			switch (value) {

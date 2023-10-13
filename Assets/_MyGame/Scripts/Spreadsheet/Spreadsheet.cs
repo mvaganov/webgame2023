@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -31,6 +32,8 @@ namespace Spreadsheet {
 		public List<Cell> cells = new List<Cell>();
 		private Cell selectedCell;
 		private PointerEventData _fakePointerEventData;
+		private int _popupUiIndex;
+		private RectTransform _popupUiElement;
 
 		public Color multiSelectColor;
 
@@ -56,8 +59,8 @@ namespace Spreadsheet {
 			return null;
 		}
 
-		public RectTransform MakeNewCell(int index, int row, int column) {
-			RectTransform cell = Instantiate(cellTypes[index].prefab.gameObject).GetComponent<RectTransform>();
+		public RectTransform MakeNewCell(int typeIndex, int row, int column) {
+			RectTransform cell = Instantiate(cellTypes[typeIndex].prefab.gameObject).GetComponent<RectTransform>();
 			cell.gameObject.SetActive(true);
 			Cell.Set(cell.gameObject, this, row, column);
 			return cell;
@@ -110,7 +113,9 @@ namespace Spreadsheet {
 			switch (obj) {
 				case Object o: o.name = name; return null;
 			}
-			return new Parse.Error($"Could not set {obj}.name = {nameObj}");
+			string errorMessage = $"Could not set {obj}.name = \"{nameObj}\"";
+			Debug.LogError(errorMessage);
+			return new Parse.Error(errorMessage);
 		}
 
 		private void DestroyFunction(GameObject go) {
@@ -158,13 +163,17 @@ namespace Spreadsheet {
 			ClearRowHeaders();
 			float cursor = 0;
 			for (int i = 0; i < rows.Count; ++i) {
+				Row row = rows[i];
 				RectTransform cell = MakeNewCell(0, i, -1);
 				cell.SetParent(RowHeadersArea);
 				cell.anchoredPosition = new Vector2(0, -cursor);
-				cell.sizeDelta = new Vector2(columnRowHeaderSize.x, rows[i].height);
-				cursor += rows[i].height + cellPadding.y;
-				SetText(cell, rows[i].label);
-				cell.name = rows[i].label;
+				cell.sizeDelta = new Vector2(columnRowHeaderSize.x, row.height);
+				cursor += row.height + cellPadding.y;
+				string label = row.label;
+				SetText(cell, label);
+				cell.name = label;
+				row.headerCell = cell.GetComponent<Cell>();
+				row.AssignHeaderSetFunction();
 			}
 			cursor -= cellPadding.y;
 			RowHeadersArea.sizeDelta = new Vector2(columnRowHeaderSize.x, cursor);
@@ -177,6 +186,9 @@ namespace Spreadsheet {
 				Row row = rows[r];
 				cursor.x = 0;
 				Cell[] rowLookupTable = row.GetCellLookupTable(true);
+				if (row.Cells != rowLookupTable) {
+					throw new System.Exception("we have a problem... cells lookup table is not happening?");
+				}
 				for (int c = 0; c < row.output.Length; ++c) {
 					RectTransform cellRect = MakeNewCell(columns[c].cellType, r, c);
 					Cell cell = cellRect.GetComponent<Cell>();
@@ -186,8 +198,8 @@ namespace Spreadsheet {
 					cellRect.sizeDelta = new Vector2(columns[c].width, rows[r].height);
 					cursor.x += columns[c].width + cellPadding.x;
 					SetText(cellRect, row.output[c]);
+					cell.AssignSetFunction(columns[c].SetData);
 					cellRect.name = row.output[c];
-
 				}
 				cursor.y -= row.height + cellPadding.y;
 			}
@@ -196,7 +208,7 @@ namespace Spreadsheet {
 			ContentArea.sizeDelta = cursor;
 		}
 
-		public Object GetTextObject(RectTransform rect) {
+		public static Object GetTextObject(RectTransform rect) {
 			InputField inf = rect.GetComponentInChildren<InputField>();
 			if (inf != null) { return inf; }
 			TMPro.TMP_InputField tmpinf = rect.GetComponentInChildren<TMPro.TMP_InputField>();
@@ -208,7 +220,15 @@ namespace Spreadsheet {
 			return null;
 		}
 
-		public void SetText(Object rect, string text) {
+		public static UnityEvent<string> GetTextSubmitEvent(RectTransform rect) {
+			InputField inf = rect.GetComponentInChildren<InputField>();
+			if (inf != null) { return inf.onSubmit; }
+			TMPro.TMP_InputField tmpinf = rect.GetComponentInChildren<TMPro.TMP_InputField>();
+			if (tmpinf != null) { return tmpinf.onSubmit; }
+			return null;
+		}
+
+		public static void SetText(Object rect, string text) {
 			switch (rect) {
 				case null: break;
 				case GameObject go: SetText(go.GetComponent<RectTransform>(), text); break;
@@ -219,6 +239,21 @@ namespace Spreadsheet {
 				case TMPro.TMP_Text tmptxt: tmptxt.text = text; break;
 				case MonoBehaviour mb: SetText(mb.GetComponent<RectTransform>(), text); break;
 			}
+		}
+
+		public void SetPopup(Cell cell, string text) {
+			if (_popupUiElement == null) {
+				_popupUiElement = MakeNewCell(_popupUiIndex, -1, -1);
+			} else {
+				_popupUiElement.SetAsLastSibling();
+			}
+			RectTransform cellRectTransform = cell.GetComponent<RectTransform>();
+			RectTransform popupRectTransform = _popupUiElement.GetComponent<RectTransform>();
+			SetText(_popupUiElement, text);
+			Vector3[] corners = new Vector3[4];
+			cellRectTransform.GetLocalCorners(corners);
+			popupRectTransform.anchoredPosition = corners[0];
+			_popupUiElement.gameObject.SetActive(true);
 		}
 
 		public void AdjustColumnHeaders(Vector2 scroll) {

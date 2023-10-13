@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -10,6 +11,7 @@ namespace Spreadsheet {
 		private bool _selected;
 		private Selectable _selectable;
 		private Color _normalColor;
+		private System.Func<string, Parse.Error> setCellData;
 
 		public Selectable SelectableComponent => _selectable;
 
@@ -45,6 +47,33 @@ namespace Spreadsheet {
 			}
 			cell.spreadsheet = speradsheet;
 			cell.position = new CellPosition(row, column);
+		}
+
+		public void AssignSetFunction(System.Func<object, object, Parse.Error> func) {
+			UnityEvent<string> submitEvent = Spreadsheet.GetTextSubmitEvent(GetComponent<RectTransform>());
+			if (submitEvent == null) { return; }
+			object obj = spreadsheet.rows[position.Row].data;
+			setCellData = str => func.Invoke(obj, str);
+			submitEvent.RemoveAllListeners();
+			submitEvent.AddListener(SetString);
+		}
+
+		private void SetString(string str) {
+			Parse.Error err = setCellData(str);
+			if (err != null && err.IsError) {
+				string errStr = err.ToString();
+				Debug.LogError(errStr);
+				spreadsheet.SetPopup(this, errStr);
+			} else {
+				Row row = spreadsheet.rows[position.Row];
+				if (row.Cells[position.Column] != this) {
+					throw new System.Exception($"expected to be modifying {this}\nfound {row.Cells[position.Row]}");
+				}
+				// don't refresh self, self is being modified by the user.
+				row.Cells[position.Column] = null;
+				row.Refresh(spreadsheet);
+				row.Cells[position.Column] = this;
+			}
 		}
 
 		public void OnPointerMove(PointerEventData eventData) => spreadsheet.CellPointerMove(this);
