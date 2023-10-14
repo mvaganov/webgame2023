@@ -4,6 +4,15 @@ using UnityEngine;
 
 namespace MyGame {
 	public class TransformSpreadsheet : Spreadsheet.Spreadsheet {
+		[ContextMenuItem(nameof(Initialize), nameof(Initialize))]
+		[ContextMenuItem(nameof(RefreshUi), nameof(RefreshUi))]
+		public List<Object> _objects = new List<Object>();
+		private System.Array internalArray;
+
+		public override System.Array Objects {
+			get => GetObjects(_objects, ref internalArray);
+			set => SetObjects(_objects, value);
+		}
 
 		public Transform GetT(object o) {
 			switch (o) {
@@ -15,8 +24,8 @@ namespace MyGame {
 			return null;
 		}
 
-		public object GetPosition(object obj) => GetT(obj)?.position;
-		public object GetRotation(object obj) => GetT(obj)?.rotation;
+		public object GetPosition(object obj) => GetT(obj)?.localPosition;
+		public object GetRotation(object obj) => GetT(obj)?.localRotation;
 		public object GetParentName(object obj) {
 			Transform transform = GetT(obj);
 			return (transform != null && transform.parent != null) ? transform.parent.name : null;
@@ -25,14 +34,14 @@ namespace MyGame {
 			Transform t = GetT(obj);
 			float[] floats = new float[3];
 			Parse.Error err = Parse.ConvertFloatsList(positionObj, ref floats);
-			t.position = new Vector3(floats[0], floats[1], floats[2]);
+			t.localPosition = new Vector3(floats[0], floats[1], floats[2]);
 			return err;
 		}
 		public Parse.Error SetRotation(object obj, object rotationObj) {
 			Transform t = GetT(obj);
 			float[] floats = new float[4];
 			Parse.Error err = Parse.ConvertFloatsList(rotationObj, ref floats);
-			t.rotation = new Quaternion(floats[0], floats[1], floats[2], floats[3]);
+			t.localRotation = new Quaternion(floats[0], floats[1], floats[2], floats[3]);
 			return err;
 		}
 		public Parse.Error SetParentName(object obj, object nameObj) {
@@ -48,29 +57,20 @@ namespace MyGame {
 			return new Parse.Error("No parent");
 		}
 
-		[ContextMenuItem(nameof(Refresh), nameof(Refresh))]
-		public List<Object> _objects = new List<Object>();
-		private System.Array internalArray;
-
-		public override System.Array Objects {
-			get => GetObjects(_objects, ref internalArray);
-			set => SetObjects(_objects, value);
-		}
-
-		public override void Refresh() {
+		public override void Initialize() {
 			columns.Clear();
 			columns.AddRange(new Column[] {
-			new Column{ label = "Name", width = 100, GetData = GetName, SetData = SetName },
-			new Column{ label = "Position", width = 100, GetData = GetPosition, SetData = SetPosition },
-			new Column{ label = "Rotation", width = 100, GetData = GetRotation, SetData = SetRotation },
-			new Column{ label = "Parent", width = 100, GetData = GetParentName, SetData = SetParentName },
-		});
-			base.Refresh();
+				new Column{ label = "Name", width = 100, GetData = GetName, SetData = SetName },
+				new Column{ label = "Position", width = 100, GetData = GetPosition, SetData = SetPosition },
+				new Column{ label = "Rotation", width = 100, GetData = GetRotation, SetData = SetRotation },
+				new Column{ label = "Parent", width = 100, GetData = GetParentName, SetData = SetParentName },
+			});
+			base.Initialize();
 		}
 
 		private void Start() {
 			SetupCellTypes();
-			Refresh();
+			Initialize();
 			GenerateColumnHeaders();
 			GenerateRowHeaders();
 			GenerateCells();

@@ -20,9 +20,16 @@ namespace Spreadsheet {
 			this.label = label;
 			this.height = height;
 		}
-		public void Render(IList<Column> columns) {
-			output = new string[columns.Count];
-			for (int i = 0; i < columns.Count; i++) {
+		public void Render(IList<Column> columns, int min = 0, int maxInclusive = -1) {
+			if (maxInclusive < 0) {
+				maxInclusive = columns.Count - 1;
+			}
+			if (output == null) {
+				output = new string[columns.Count];
+			} else if (output.Length < columns.Count) {
+				Array.Resize(ref output, columns.Count);
+			}
+			for (int i = min; i <= maxInclusive; i++) {
 				object result = columns[i].GetData.Invoke(data);
 				if (result != null) {
 					output[i] = result.ToString();
@@ -57,16 +64,20 @@ namespace Spreadsheet {
 
 		private static List<Cell[]> s_allocatedCells = new List<Cell[]>();
 
-		public void Refresh(Spreadsheet sheet) {
-			Render(sheet.columns);
+		public void Refresh(Spreadsheet sheet, int min = 0, int maxInclusive = -1) {
+			if (maxInclusive < 0) {
+				maxInclusive = cells.Length - 1;
+			}
+			Render(sheet.columns, min, maxInclusive);
 			if (cells == null || cells.Length == 0) { return; }
-			for (int i = 0; i < cells.Length; ++i) {
+			for (int i = min; i <= maxInclusive; ++i) {
 				if (cells[i] == null) {
 					continue;
 				}
 				Spreadsheet.SetText(cells[i], output[i]);
 			}
 		}
+
 		public void AssignHeaderSetFunction() {
 			UnityEvent<string> submitEvent = Spreadsheet.GetTextSubmitEvent(headerCell.GetComponent<RectTransform>());
 			if (submitEvent == null) { return; }

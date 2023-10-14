@@ -90,7 +90,7 @@ namespace Spreadsheet {
 		public static Parse.Error ParseList(string text, ref int index, List<object> out_tokens, Func<char, bool> isFinished) {
 			int tokenStart = -1, tokenEnd = -1;
 			bool readingDigits = false;
-			bool readingFloat = false;
+			bool readingFloat = false; // found a decimal point. don't let another decimal point go!
 			bool readingToken = false;
 			char readingStringLiteral = '\0';
 			List<char> parenthesisNesting = new List<char>();
@@ -110,6 +110,7 @@ namespace Spreadsheet {
 						}
 					} else if(c == readingStringLiteral) {
 						tokenEnd = index;
+						//UnityEngine.Debug.Log($"\"token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
 						Parse.Error err = Unescape(text, out string resultToken, tokenStart, tokenEnd);
 						out_tokens.Add(resultToken);
 						return err;
@@ -122,6 +123,7 @@ namespace Spreadsheet {
 				} else if (IsWhiteSpace(c)) {
 					if (tokenStart >= 0) {
 						tokenEnd = index;
+						//UnityEngine.Debug.Log($"   token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
 					} else {
 						++index;
 						continue;
@@ -137,6 +139,7 @@ namespace Spreadsheet {
 				} else if (IsLetter(c)) {
 					if (readingDigits) {
 						tokenEnd = index;
+						//UnityEngine.Debug.Log($"num->char token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
 						readingToken = true;
 					} else if (readingToken) {
 						++index;
@@ -147,14 +150,16 @@ namespace Spreadsheet {
 						tokenStart = index;
 					}
 					tokenEnd = index;
+					//UnityEngine.Debug.Log($", token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
 					++index;
 				} else {
 					int last = parenthesisNesting.Count - 1;
 					char currentEnclosureFinish = last >= 0 ? parenthesisNesting[last] : '\0';
 					if (currentEnclosureFinish == c) {
 						parenthesisNesting.RemoveAt(last);
+						tokenEnd = index;
 						if (parenthesisNesting.Count == 0 && isFinished != null && isFinished.Invoke(c)) {
-							tokenEnd = index;
+							//UnityEngine.Debug.Log($"{c} token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
 							finishedEarly = true;
 						}
 					} else if (!readingToken && IsDecimalPoint(c) && !readingFloat) {
@@ -163,7 +168,9 @@ namespace Spreadsheet {
 						continue;
 					} else if (IsSign(c) && !readingDigits && !readingToken) {
 						char nextChar = ((index + 1) < text.Length) ? text[index + 1] : '\0';
-						if (IsDigit(nextChar)) {
+						//UnityEngine.Debug.Log($"Sign {c}, next is {nextChar}");
+						if (IsDigit(nextChar) || (readingFloat = IsDecimalPoint(nextChar))) {
+							tokenStart = index;
 							readingDigits = true;
 							++index;
 							continue;
@@ -192,12 +199,17 @@ namespace Spreadsheet {
 						}
 					}
 				}
-				if(tokenStart >= 0 && tokenEnd < 0 && index + 1 >= text.Length) {
-					tokenEnd = ++index;
+				if(tokenStart >= 0 && tokenEnd < 0 && index >= text.Length) {
+					tokenEnd = text.Length;
+					//UnityEngine.Debug.Log($"EOF token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
 				}
 				if (tokenEnd >= 0) {
 					string token = text.Substring(tokenStart, tokenEnd - tokenStart);
 					if (readingDigits) {
+						//UnityEngine.Debug.Log($"double parse '{token}'<-------------");
+						//string hey = "";
+						//for(int i = 0; i < token.Length; ++i) { hey += "[" + ((int)token[i]) + "]"; }
+						//UnityEngine.Debug.Log(hey);
 						double number = double.Parse(token);
 						out_tokens.Add(number);
 					} else {
@@ -213,6 +225,7 @@ namespace Spreadsheet {
 				}
 				++index;
 			}
+			//UnityEngine.Debug.Log($"###### token count: {out_tokens.Count}   {index} < {text.Length}");
 			return null;
 		}
 

@@ -34,8 +34,9 @@ namespace Spreadsheet {
 		private PointerEventData _fakePointerEventData;
 		private int _popupUiIndex;
 		private RectTransform _popupUiElement;
-
 		public Color multiSelectColor;
+
+		public CellSelection AllRange => new CellSelection(CellPosition.Zero, new CellPosition(rows.Count - 1, columns.Count - 1));
 
 		public abstract System.Array Objects { get; set; }
 
@@ -76,7 +77,7 @@ namespace Spreadsheet {
 			return _value != null ? _value : _value = _objects.ToArray();
 		}
 
-		public virtual void Refresh() {
+		public virtual void Initialize() {
 			rows.Clear();
 			int count = Mathf.Max(Objects.Length, rows.Count);
 			if (Objects.Length < count) {
@@ -206,6 +207,18 @@ namespace Spreadsheet {
 			cursor.y *= -1;
 			cursor -= cellPadding;
 			ContentArea.sizeDelta = cursor;
+		}
+
+		public void RefreshVisibleUi() {
+			// TODO calculate range that is visible
+			RefreshUi(AllRange);
+		}
+
+		public void RefreshUi(CellSelection visibleRange) {
+			for (int r = visibleRange.Start.Row; r < visibleRange.End.Row; ++r) {
+				Row row = rows[r];
+				row.Refresh(this, visibleRange.Start.Column, visibleRange.End.Column);
+			}
 		}
 
 		public static Object GetTextObject(RectTransform rect) {

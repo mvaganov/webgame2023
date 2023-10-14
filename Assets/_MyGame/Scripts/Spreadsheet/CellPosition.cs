@@ -7,6 +7,7 @@ namespace Spreadsheet {
 	public struct CellPosition {
 		public int Row, Column;
 		public static CellPosition Invalid = new CellPosition(-1, -1);
+		public static CellPosition Zero = new CellPosition(0, 0);
 		public bool IsEntireRow { get => Column < 0; set => Column = (value != IsEntireRow) ? ~Column : Column; }
 		public bool IsEntireColumn { get => Row < 0; set => Row = (value != IsEntireColumn) ? ~Row : Row; }
 		public bool IsNormalPosition { get => Column >= 0 && Row >= 0; }
@@ -96,7 +97,10 @@ namespace Spreadsheet {
 		public CellPosition Start, End;
 
 		public bool IsValid => Start.IsNormalPosition && End.IsNormalPosition;
-		public int Area { get => (Math.Abs(Start.Row - End.Row) + 1) * (Math.Abs(Start.Column - End.Column) + 1); }
+		public int Area => Width * Height;
+		public int Width => (Math.Abs(Start.Column - End.Column) + 1);
+		public int Height => (Math.Abs(Start.Row - End.Row) + 1);
+		public CellPosition Size => new CellPosition(Height, Width);
 		public CellPosition Min {
 			get => new CellPosition(Math.Min(Start.Row, End.Row), Math.Min(Start.Column, End.Column));
 			set { Normalize(); Start = value; }
@@ -108,6 +112,7 @@ namespace Spreadsheet {
 
 		public CellSelection(int row, int column) : this (new CellPosition(row, column)) { }
 		public CellSelection(CellPosition position) { Start = End = position; }
+		public CellSelection(CellPosition start, CellPosition end) { Start = start; End = end; }
 		public bool Equals(CellSelection other) => Start == other.Start && End == other.End;
 		public static bool operator ==(CellSelection left, CellSelection right) => left.Equals(right);
 		public static bool operator !=(CellSelection left, CellSelection right) => !left.Equals(right);
