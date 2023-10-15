@@ -93,7 +93,7 @@ namespace Spreadsheet {
 	}
 
 	[System.Serializable]
-	public struct CellSelection {
+	public struct CellRange {
 		public CellPosition Start, End;
 
 		public bool IsValid => Start.IsNormalPosition && End.IsNormalPosition;
@@ -110,20 +110,20 @@ namespace Spreadsheet {
 			set { Normalize(); End = value; }
 		}
 
-		public CellSelection(int row, int column) : this (new CellPosition(row, column)) { }
-		public CellSelection(CellPosition position) { Start = End = position; }
-		public CellSelection(CellPosition start, CellPosition end) { Start = start; End = end; }
-		public bool Equals(CellSelection other) => Start == other.Start && End == other.End;
-		public static bool operator ==(CellSelection left, CellSelection right) => left.Equals(right);
-		public static bool operator !=(CellSelection left, CellSelection right) => !left.Equals(right);
+		public CellRange(int row, int column) : this (new CellPosition(row, column)) { }
+		public CellRange(CellPosition position) { Start = End = position; }
+		public CellRange(CellPosition start, CellPosition end) { Start = start; End = end; }
+		public bool Equals(CellRange other) => Start == other.Start && End == other.End;
+		public static bool operator ==(CellRange left, CellRange right) => left.Equals(right);
+		public static bool operator !=(CellRange left, CellRange right) => !left.Equals(right);
 		public override bool Equals(object other) => other is CellPosition cell && Equals(cell);
 		public override int GetHashCode() => Start.GetHashCode() | (End.GetHashCode() << 32);
 		public override string ToString() {
 			//if (Start == End) { return Start.ToString(); }
 			return Start + ":" + End;
 		}
-		public static Parse.Error FromString(string str, out CellSelection selection) {
-			selection = new CellSelection();
+		public static Parse.Error FromString(string str, out CellRange selection) {
+			selection = new CellRange();
 			int delimeterIndex = str.IndexOf(':');
 			if (delimeterIndex < 0) {
 				return new Parse.Error("missing delimiter ':' between positions");

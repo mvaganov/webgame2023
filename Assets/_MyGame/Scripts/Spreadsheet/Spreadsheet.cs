@@ -17,7 +17,7 @@ namespace Spreadsheet {
 		public RectTransform ColumnHeadersArea;
 		[ContextMenuItem(nameof(GenerateRowHeaders), nameof(GenerateRowHeaders))]
 		public RectTransform RowHeadersArea;
-		public RectTransform ContentArea;
+		public ScrollRect ScrollView;
 		public Vector2 columnRowHeaderSize = new Vector2(100, 40);
 		public Vector2 defaultCellSize = new Vector2(100, 30);
 		public Vector2 cellPadding = new Vector2(2, 1);
@@ -25,10 +25,10 @@ namespace Spreadsheet {
 		public List<Row> rows = new List<Row>();
 		public List<CellType> cellTypes = new List<CellType>();
 		[ContextMenuItem(nameof(CopySelectionToClipboard), nameof(CopySelectionToClipboard))]
-		public List<CellSelection> selection = new List<CellSelection>();
+		public List<CellRange> selection = new List<CellRange>();
 		private bool _selecting;
 		public CellPosition currentCellPosition;
-		public CellSelection currentCellSelection;
+		public CellRange currentCellSelection;
 		public List<Cell> cells = new List<Cell>();
 		private Cell selectedCell;
 		private PointerEventData _fakePointerEventData;
@@ -36,7 +36,9 @@ namespace Spreadsheet {
 		private RectTransform _popupUiElement;
 		public Color multiSelectColor;
 
-		public CellSelection AllRange => new CellSelection(CellPosition.Zero, new CellPosition(rows.Count - 1, columns.Count - 1));
+		public RectTransform ContentArea => ScrollView.content;
+
+		public CellRange AllRange => new CellRange(CellPosition.Zero, new CellPosition(rows.Count - 1, columns.Count - 1));
 
 		public abstract System.Array Objects { get; set; }
 
@@ -214,7 +216,74 @@ namespace Spreadsheet {
 			RefreshUi(AllRange);
 		}
 
-		public void RefreshUi(CellSelection visibleRange) {
+		public CellRange GetVisibleRange() {
+			CellRange range = new CellRange();
+			Vector3[] viewportCorners = new Vector3[4];
+			Vector3[] contentCorners = new Vector3[4];
+			ScrollView.viewport.GetWorldCorners(viewportCorners);
+			ScrollView.content.GetWorldCorners(contentCorners);
+			float viewportHeight = viewportCorners[1].y - viewportCorners[0].y;
+			float viewportWidth = viewportCorners[2].x - viewportCorners[0].x;
+			float contentHeight = contentCorners[1].y - contentCorners[0].y;
+			float left = contentCorners[0].x - viewportCorners[0].x;
+			float right = contentCorners[2].x - viewportCorners[0].x;
+
+			//float top = contentCorners[1].y - viewportCorners[0].y;
+			//float bottom = contentCorners[0].y - viewportCorners[0].y;
+			// need to slip vertical, since Unity likes 0,0 at the lower left, and we want 0,0 at the top left
+			float top = viewportHeight - (contentCorners[1].y - viewportCorners[0].y);
+			float bottom = viewportHeight - (contentCorners[0].y - viewportCorners[0].y);
+			Vector2 cursor = new Vector2(left, top);
+			for(int r = 0; r < rows.Count; ++r) {
+				cursor.y += rows[r].height + cellPadding.y;
+				if (cursor.y >= 0) {
+					range.Start.Row = r;
+					break;
+				}
+			}
+			for (int c = 0; c < columns.Count; ++c) {
+				cursor.x += columns[c].width + cellPadding.x;
+				if (cursor.x >= 0) {
+					range.Start.Column = c;
+					break;
+				}
+			}
+			range.End = range.Start;
+			//Debug.Log($"top {top}, left {left}\n{cursor} vs ({viewportWidth}, {viewportHeight})");
+			if (cursor.y < viewportHeight) {
+				for (int r = range.Start.Row + 1; r < rows.Count; ++r) {
+					cursor.y += rows[r].height + cellPadding.y;
+					if (cursor.y >= viewportHeight) {
+						range.End.Row = r;
+						break;
+					}
+				}
+			}
+			if (cursor.x < viewportWidth) {
+				for (int c = range.Start.Column + 1; c < columns.Count; ++c) {
+					cursor.x += columns[c].width + cellPadding.x;
+					if (cursor.x >= viewportWidth) {
+						range.End.Column = c;
+						break;
+					}
+				}
+			}
+			return range;
+		}
+
+		public void UpdateUiBasedOnVisibility() {
+			CellRange all = AllRange;
+			CellRange visible = GetVisibleRange();
+			//Debug.Log($"all {all}, visible {visible}");
+			// TODO check if the currently visible cells are different from the last rendered cells.
+			// TODO if they are, refresh! --that is, queue the cells to refresh.
+				// refreshing a cell means
+					// - get memory for the UI element
+					// - arrange the UI element
+					// - queue the element to have data refreshed
+		}
+
+		public void RefreshUi(CellRange visibleRange) {
 			for (int r = visibleRange.Start.Row; r < visibleRange.End.Row; ++r) {
 				Row row = rows[r];
 				row.Refresh(this, visibleRange.Start.Column, visibleRange.End.Column);
@@ -282,7 +351,7 @@ namespace Spreadsheet {
 			cell.Selected = true;
 			selectedCell = cell;
 			cell.SelectableComponent.OnSelect(null);
-			currentCellSelection = new CellSelection(cell.position);
+			currentCellSelection = new CellRange(cell.position);
 			UpdateSelection();
 		}
 
@@ -327,7 +396,7 @@ namespace Spreadsheet {
 				max = CellPosition.Max(max, currentCellSelection.Max);
 			}
 			for (int i = 0; i < selection.Count; ++i) {
-				CellSelection csel = selection[i];
+				CellRange csel = selection[i];
 				if (csel.IsValid) {
 					min = CellPosition.Min(min, csel.Min);
 					max = CellPosition.Max(max, csel.Max);

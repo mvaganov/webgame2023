@@ -34,7 +34,9 @@ namespace MyGame {
 			Transform t = GetT(obj);
 			float[] floats = new float[3];
 			Parse.Error err = Parse.ConvertFloatsList(positionObj, ref floats);
-			t.localPosition = new Vector3(floats[0], floats[1], floats[2]);
+			Vector3 newPosition = new Vector3(floats[0], floats[1], floats[2]);
+			//Debug.Log($"{t.name} position: {t.localPosition} -> {newPosition}");
+			t.localPosition = newPosition;
 			return err;
 		}
 		public Parse.Error SetRotation(object obj, object rotationObj) {
