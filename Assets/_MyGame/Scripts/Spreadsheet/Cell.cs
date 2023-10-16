@@ -4,16 +4,27 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Spreadsheet {
+	[RequireComponent(typeof(RectTransform))]
 	public class Cell : MonoBehaviour, IPointerDownHandler, IPointerMoveHandler, IPointerUpHandler {
+		private int _cellTypeIndex;
 		public CellPosition position;
 		public Spreadsheet spreadsheet;
+
 		[SerializeField]
 		private bool _selected;
+		/// <summary>Selectable element, pointer changes color. Cached in <see cref="Awake"/></summary>
 		private Selectable _selectable;
+		/// <summary>Cached in <see cref="Awake"/></summary>
 		private Color _normalColor;
+		/// <summary>Set in <see cref="AssignSetFunction"/></summary>
 		private System.Func<string, Parse.Error> setCellData;
 
 		public Selectable SelectableComponent => _selectable;
+
+		public RectTransform RectTransform => GetComponent<RectTransform>();
+
+		public int CellTypeIndex => _cellTypeIndex;
+		public void SetCellTypeIndex(int cellTypeIndex) => _cellTypeIndex = cellTypeIndex;
 
 		public bool Selected {
 			get => _selected;
@@ -29,6 +40,8 @@ namespace Spreadsheet {
 			}
 		}
 
+		public override string ToString() => (spreadsheet != null ? spreadsheet.name + "!" : "") + position.ToString();
+
 		public void SetColor(Color color) {
 			ColorBlock block = _selectable.colors;
 			block.normalColor = color;
@@ -40,13 +53,17 @@ namespace Spreadsheet {
 			_normalColor = _selectable.colors.normalColor;
 		}
 
-		public static void Set(GameObject gameObject, Spreadsheet speradsheet, int row, int column) {
+		public static void Set(GameObject gameObject, Spreadsheet speradsheet, CellPosition cellPosition) {
 			Cell cell = gameObject.GetComponent<Cell>();
-			if (cell == null) {
-				cell = gameObject.AddComponent<Cell>();
-			}
-			cell.spreadsheet = speradsheet;
-			cell.position = new CellPosition(row, column);
+			if (cell == null) { cell = gameObject.AddComponent<Cell>(); }
+			cell.Set(speradsheet, cellPosition);
+		}
+
+		public Cell Set(Spreadsheet spreadsheet, CellPosition cellPosition) {
+			this.spreadsheet = spreadsheet;
+			spreadsheet.SetCellUi(cellPosition, this);
+			this.position = cellPosition;
+			return this;
 		}
 
 		public void AssignSetFunction(System.Func<object, object, Parse.Error> func) {

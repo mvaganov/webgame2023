@@ -95,7 +95,7 @@ namespace Spreadsheet {
 	[System.Serializable]
 	public struct CellRange {
 		public CellPosition Start, End;
-
+		public static CellRange Invalid = new CellRange(CellPosition.Zero, new CellPosition(-1,-1));
 		public bool IsValid => Start.IsNormalPosition && End.IsNormalPosition;
 		public int Area => Width * Height;
 		public int Width => (Math.Abs(Start.Column - End.Column) + 1);
@@ -160,6 +160,29 @@ namespace Spreadsheet {
 				Start = min;
 				End = max;
 			}
+		}
+
+		public void ForEach(Action<CellPosition> action) {
+			CellPosition cursor = Start;
+			for (cursor.Row = Start.Row; cursor.Row <= End.Row; ++cursor.Row) {
+				for(cursor.Column = Start.Column; cursor.Column <= End.Column; ++cursor.Column) {
+					action.Invoke(cursor);
+				}
+			}
+		}
+
+		public void Union(CellRange other) {
+			if (other.Start.Row    < Start.Row)    { Start.Row = other.Start.Row; }
+			if (other.Start.Column < Start.Column) { Start.Column = other.Start.Column; }
+			if (other.End.Row      > End.Row)      { End.Row = other.End.Row; }
+			if (other.End.Column   > End.Column)   { End.Column = other.End.Column; }
+		}
+
+		internal void Intersection(CellRange other) {
+			if (other.Start.Row    > Start.Row)    { Start.Row = other.Start.Row; }
+			if (other.Start.Column > Start.Column) { Start.Column = other.Start.Column; }
+			if (other.End.Row      < End.Row)      { End.Row = other.End.Row; }
+			if (other.End.Column   < End.Column)   { End.Column = other.End.Column; }
 		}
 	}
 }

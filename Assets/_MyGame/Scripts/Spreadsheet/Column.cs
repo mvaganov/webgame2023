@@ -2,8 +2,11 @@ namespace Spreadsheet {
 	[System.Serializable]
 	public class Column {
 		public string label;
+		public Cell headerCell;
+
 		public float width;
 		public int cellType;
+
 		private System.Func<object, object> getData;
 		private System.Func<object, object, Parse.Error> setData;
 		public System.Func<object, object> GetData { get => getData; set => getData = value; }

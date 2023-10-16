@@ -6,15 +6,24 @@ using UnityEngine.Events;
 namespace Spreadsheet {
 	[System.Serializable]
 	public class Row {
+		/// <summary>
+		/// Previously allocated memory used to store cell rows
+		/// </summary>
+		private static List<Cell[]> s_allocatedCells = new List<Cell[]>();
+
 		public string label;
+		public Cell headerCell;
+		public Func<string, Parse.Error> setHeader;
+
 		public float height;
 		public string[] output;
 		[SerializeField] private object _data;
 		private Cell[] cells;
-		public Cell headerCell;
+
 		public object data { get => _data; set => _data = value; }
+
 		public Cell[] Cells => cells;
-		public System.Func<string, Parse.Error> setHeader;
+
 		public Row(object data, string label, float height) {
 			this._data = data;
 			this.label = label;
@@ -61,8 +70,6 @@ namespace Spreadsheet {
 			}
 			return cells;
 		}
-
-		private static List<Cell[]> s_allocatedCells = new List<Cell[]>();
 
 		public void Refresh(Spreadsheet sheet, int min = 0, int maxInclusive = -1) {
 			if (maxInclusive < 0) {
