@@ -61,13 +61,15 @@ namespace Spreadsheet {
 
 		public Cell Set(Spreadsheet spreadsheet, CellPosition cellPosition) {
 			this.spreadsheet = spreadsheet;
-			spreadsheet.SetCellUi(cellPosition, this);
-			this.position = cellPosition;
+			//spreadsheet.SetCellUi(cellPosition, this);
+			spreadsheet.AssignCell(cellPosition, this);
+			Selected = spreadsheet.IsSelected(cellPosition);
+			position = cellPosition;
 			return this;
 		}
 
 		public void AssignSetFunction(System.Func<object, object, Parse.Error> func) {
-			UnityEvent<string> submitEvent = Spreadsheet.GetTextSubmitEvent(GetComponent<RectTransform>());
+			UnityEvent<string> submitEvent = Ui.GetTextSubmitEvent(GetComponent<RectTransform>());
 			if (submitEvent == null) { return; }
 			object obj = spreadsheet.rows[position.Row].data;
 			setCellData = str => func.Invoke(obj, str);

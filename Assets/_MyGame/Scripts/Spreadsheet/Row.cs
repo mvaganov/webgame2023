@@ -81,12 +81,12 @@ namespace Spreadsheet {
 				if (cells[i] == null) {
 					continue;
 				}
-				Spreadsheet.SetText(cells[i], output[i]);
+				Ui.SetText(cells[i], output[i]);
 			}
 		}
 
 		public void AssignHeaderSetFunction() {
-			UnityEvent<string> submitEvent = Spreadsheet.GetTextSubmitEvent(headerCell.GetComponent<RectTransform>());
+			UnityEvent<string> submitEvent = Ui.GetTextSubmitEvent(headerCell.GetComponent<RectTransform>());
 			if (submitEvent == null) { return; }
 			submitEvent.RemoveAllListeners();
 			submitEvent.AddListener(SetLabel);
