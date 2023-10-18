@@ -4,50 +4,26 @@ using UnityEngine;
 
 namespace MyGame {
 	public class TransformSpreadsheet : Spreadsheet.Spreadsheet {
-		[ContextMenuItem(nameof(Initialize), nameof(Initialize))]
-		[ContextMenuItem(nameof(RefreshUi), nameof(RefreshUi))]
+		[ContextMenuItem(nameof(InitializeRows), nameof(InitializeRows))]
+		[ContextMenuItem(nameof(RefreshCells), nameof(RefreshCells))]
 		public List<Object> _objects = new List<Object>();
 		private System.Array internalArray;
 
 		public override System.Array Objects {
 			get => GetObjects(_objects, ref internalArray);
-			set => SetObjects(_objects, value);
-		}
-
-		public Transform GetT(object o) {
-			switch (o) {
-				case Transform t: return t;
-				case GameObject go: return go.transform;
-				case MonoBehaviour m: return m.transform;
+			set {
+				internalArray = null;
+				SetObjects(_objects, value);
 			}
-			Debug.Log("no transform for " + o);
-			return null;
 		}
 
-		public object GetPosition(object obj) => GetT(obj)?.localPosition;
-		public object GetRotation(object obj) => GetT(obj)?.localRotation;
 		public object GetParentName(object obj) {
-			Transform transform = GetT(obj);
+			Transform transform = Ui.TransformFrom(obj);
 			return (transform != null && transform.parent != null) ? transform.parent.name : null;
 		}
-		public Parse.Error SetPosition(object obj, object positionObj) {
-			Transform t = GetT(obj);
-			float[] floats = new float[3];
-			Parse.Error err = Parse.ConvertFloatsList(positionObj, ref floats);
-			Vector3 newPosition = new Vector3(floats[0], floats[1], floats[2]);
-			//Debug.Log($"{t.name} position: {t.localPosition} -> {newPosition}");
-			t.localPosition = newPosition;
-			return err;
-		}
-		public Parse.Error SetRotation(object obj, object rotationObj) {
-			Transform t = GetT(obj);
-			float[] floats = new float[4];
-			Parse.Error err = Parse.ConvertFloatsList(rotationObj, ref floats);
-			t.localRotation = new Quaternion(floats[0], floats[1], floats[2], floats[3]);
-			return err;
-		}
+
 		public Parse.Error SetParentName(object obj, object nameObj) {
-			Transform transform = GetT(obj);
+			Transform transform = Ui.TransformFrom(obj);
 			if (transform == null) {
 				return new Parse.Error($"{obj} has no Transform");
 			}
@@ -59,23 +35,15 @@ namespace MyGame {
 			return new Parse.Error("No parent");
 		}
 
-		public override void Initialize() {
+		public override void InitializeRows() {
 			columns.Clear();
 			columns.AddRange(new Column[] {
-				new Column{ label = "Name", width = 100, GetData = GetName, SetData = SetName },
-				new Column{ label = "Position", width = 100, GetData = GetPosition, SetData = SetPosition },
-				new Column{ label = "Rotation", width = 100, GetData = GetRotation, SetData = SetRotation },
+				new Column{ label = "Name", width = 100, GetData = Ui.GetName, SetData = Ui.SetName },
+				new Column{ label = "Position", width = 100, GetData = Ui.GetPosition, SetData = Ui.SetPosition },
+				new Column{ label = "Rotation", width = 100, GetData = Ui.GetRotation, SetData = Ui.SetRotation },
 				new Column{ label = "Parent", width = 100, GetData = GetParentName, SetData = SetParentName },
 			});
-			base.Initialize();
-		}
-
-		private void Start() {
-			SetupCellTypes();
-			Initialize();
-			GenerateColumnHeaders();
-			GenerateRowHeaders();
-			GenerateCells();
+			base.InitializeRows();
 		}
 	}
 }

@@ -1,11 +1,186 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Spreadsheet {
 	public partial class Spreadsheet {
+		[System.Serializable]
+		public class CellType {
+			public string name;
+			public RectTransform prefab;
+		}
+
+		public Vector2 columnRowHeaderSize = new Vector2(100, 40);
+		public Vector2 cellPadding = new Vector2(2, 1);
 		public List<CellType> cellTypes = new List<CellType>();
 		private static List<List<Cell>> s_preallocatedCellsByType = new List<List<Cell>>();
+		private List<CellPosition> _toRemoveDuringUpdate = new List<CellPosition>();
+		private List<CellPosition> _toAddDuringUpdate = new List<CellPosition>();
+		private bool _updatingVisiblity;
+		private CellRange? _rangeToUpdateAsap;
+		private CellRange _lastRendered = CellRange.Invalid;
+		private Vector3[] _viewportCorners = new Vector3[4];
+		private Vector3[] _contentCorners = new Vector3[4];
 
+		private void UpdateRefreshCells() {
+			if (_rangeToUpdateAsap == null || _updatingVisiblity) {
+				return;
+			}
+			RefreshCells(_rangeToUpdateAsap.Value);
+		}
+
+		public void RefreshCells(CellRange visibleRange) {
+			if (_updatingVisiblity) {
+				_rangeToUpdateAsap = visibleRange;
+				return;
+			}
+			_rangeToUpdateAsap = null;
+			//Debug.Log(visibleRange);
+			StartCoroutine(UpdateCells(visibleRange));
+		}
+
+		private IEnumerator UpdateCells(CellRange visibleRange) {
+			_updatingVisiblity = true;
+			PopulateAddAndRemoveLists(visibleRange);
+			RemoveCellsInRemoveList();
+			//Debug.Log($"old: {_lastRendered}  new: {visibleRange}\n" +
+			//	$"newcells: [{string.Join(", ", _toAddDuringUpdate)}]\n" +
+			//	$"oldCells: [{string.Join(", ", _toRemoveDuringUpdate)}]");
+			yield return null;
+			CreateCellsInCreateList();
+			RefreshVisibleCells(visibleRange);
+			_updatingVisiblity = false;
+		}
+
+		private void PopulateAddAndRemoveLists(CellRange visibleRange) {
+			_toRemoveDuringUpdate.Clear();
+			_toAddDuringUpdate.Clear();
+			if (_lastRendered == visibleRange) {
+				return;
+			}
+			CellRange union = visibleRange;
+			CellRange intersection = visibleRange;
+			union.Union(_lastRendered);
+			intersection.Intersection(_lastRendered);
+			union.ForEach(cpos => {
+				if (intersection.Contains(cpos)) { return; }
+				if (_lastRendered.Contains(cpos)) { _toRemoveDuringUpdate.Add(cpos); }
+				if (visibleRange.Contains(cpos)) { _toAddDuringUpdate.Add(cpos); }
+			});
+		}
+
+		private void RemoveCellsInRemoveList() {
+			for (int i = 0; i < _toRemoveDuringUpdate.Count; ++i) {
+				CellPosition cpos = _toRemoveDuringUpdate[i];
+				FreeCellUi(GetCellUi(cpos));
+			}
+		}
+
+		public Cell GetCellUi(CellPosition cellPosition) {
+			if (cellPosition.IsNormalPosition) {
+				Cell[] cellUiRow = rows[cellPosition.Row].GetCellLookupTable(false);
+				if (cellUiRow != null) {
+					return cellUiRow[cellPosition.Column];
+				}
+			} else if (cellPosition.IsEntireColumn) {
+				return columns[cellPosition.Column].headerCell;
+			} else if (cellPosition.IsEntireRow) {
+				return rows[cellPosition.Row].headerCell;
+			}
+			return null;
+		}
+
+		private void CreateCellsInCreateList() {
+			for (int i = 0; i < _toAddDuringUpdate.Count; ++i) {
+				CellPosition cpos = _toAddDuringUpdate[i];
+				Vector2 cursor = GetCellDrawPosition(cpos);
+				Cell cell = MakeNewCell(columns[cpos.Column].cellType).Set(this, cpos);
+				PlaceCell(cell, cursor);
+			}
+		}
+
+		public Vector2 GetCellDrawPosition(CellPosition cellPosition) {
+			Vector2 cursor = Vector2.zero;
+			for (int r = 0; r < cellPosition.Row; ++r) {
+				cursor.y -= rows[r].height + cellPadding.y;
+			}
+			for (int c = 0; c < cellPosition.Column; ++c) {
+				cursor.x += columns[c].width + cellPadding.x;
+			}
+			return cursor;
+		}
+
+		private RectTransform PlaceCell(Cell cell, Vector3 cursor) {
+			RectTransform rect = cell.RectTransform;
+			rect.SetParent(ContentArea);
+			rect.anchoredPosition = cursor;
+			int r = cell.position.Row;
+			int c = cell.position.Column;
+			rect.sizeDelta = new Vector2(columns[c].width, rows[r].height);
+			cell.AssignSetFunction(columns[c].SetData);
+			rect.name = cell.position.ToString();
+			return rect;
+		}
+
+		public CellRange GetVisibleCellRange() {
+			CellRange range = new CellRange();
+			ScrollView.viewport.GetWorldCorners(_viewportCorners);
+			ScrollView.content.GetWorldCorners(_contentCorners);
+			float viewportHeight = _viewportCorners[1].y - _viewportCorners[0].y;
+			float viewportWidth = _viewportCorners[2].x - _viewportCorners[0].x;
+			//float contentHeight = contentCorners[1].y - contentCorners[0].y;
+			float left = _contentCorners[0].x - _viewportCorners[0].x;
+			//float right = contentCorners[2].x - viewportCorners[0].x;
+			// need to slip vertical, since Unity likes 0,0 at the lower left, and we want 0,0 at the top left
+			float top = viewportHeight - (_contentCorners[1].y - _viewportCorners[0].y);
+			//float bottom = viewportHeight - (contentCorners[0].y - viewportCorners[0].y);
+			Vector2 cursor = new Vector2(left, top);
+			for (int r = 0; r < rows.Count; ++r) {
+				cursor.y += rows[r].height + cellPadding.y;
+				range.Start.Row = r;
+				if (cursor.y >= 0) {
+					break;
+				}
+			}
+			for (int c = 0; c < columns.Count; ++c) {
+				cursor.x += columns[c].width + cellPadding.x;
+				range.Start.Column = c;
+				if (cursor.x >= 0) {
+					break;
+				}
+			}
+			range.End = range.Start;
+			//Debug.Log($"top {top}, left {left}\n{cursor} vs ({viewportWidth}, {viewportHeight})");
+			if (cursor.y < viewportHeight) {
+				for (int r = range.Start.Row + 1; r < rows.Count; ++r) {
+					cursor.y += rows[r].height + cellPadding.y;
+					range.End.Row = r;
+					if (cursor.y >= viewportHeight) {
+						break;
+					}
+				}
+			}
+			if (cursor.x < viewportWidth) {
+				for (int c = range.Start.Column + 1; c < columns.Count; ++c) {
+					cursor.x += columns[c].width + cellPadding.x;
+					range.End.Column = c;
+					if (cursor.x >= viewportWidth) {
+						break;
+					}
+				}
+			}
+			//Debug.Log(range);
+			return range;
+		}
+
+		private void RefreshVisibleCells(CellRange visibleRange) {
+			for (int r = visibleRange.Start.Row; r <= visibleRange.End.Row; ++r) {
+				Row row = rows[r];
+				row.Refresh(this, visibleRange.Start.Column, visibleRange.End.Column);
+			}
+			_lastRendered = visibleRange;
+		}
 
 		public Cell MakeNewCell(string type) {
 			int index = cellTypes.FindIndex(ct => ct.name == type);

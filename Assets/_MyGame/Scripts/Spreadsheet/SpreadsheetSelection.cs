@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace Spreadsheet {
-  public partial class Spreadsheet {
+	public partial class Spreadsheet {
 		[ContextMenuItem(nameof(CopySelectionToClipboard), nameof(CopySelectionToClipboard))]
 		public List<CellRange> selection = new List<CellRange>();
 		private bool _selecting;
 		private CellPosition currentCellPosition = CellPosition.Invalid;
 		private CellRange currentCellSelection = CellRange.Invalid;
+		private Cell selectedCell;
 
 		public void CellPointerDown(Cell cell) {
 			_selecting = true;
