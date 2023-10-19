@@ -90,6 +90,14 @@ namespace Spreadsheet {
 		public static CellPosition Max(CellPosition a, CellPosition b) {
 			return new CellPosition(Math.Max(a.Row, b.Row), Math.Max(a.Column, b.Column));
 		}
+
+		public static CellPosition operator -(CellPosition a, CellPosition b) {
+			return new CellPosition(a.Row - b.Row, a.Column - b.Column);
+		}
+
+		public static CellPosition operator +(CellPosition a, CellPosition b) {
+			return new CellPosition(a.Row + b.Row, a.Column + b.Column);
+		}
 	}
 
 	[System.Serializable]

@@ -7,6 +7,7 @@ using UnityEngine.UI;
 namespace Spreadsheet {
 	public abstract partial class Spreadsheet : MonoBehaviour {
 		public ScrollRect ScrollView;
+		public CellGenerator cellGenerator;
 		public Vector2 defaultCellSize = new Vector2(100, 30);
 		public List<Column> columns = new List<Column>();
 		public List<Row> rows = new List<Row>();
@@ -28,7 +29,6 @@ namespace Spreadsheet {
 
 		private void Awake() {
 			_transform = GetComponent<RectTransform>();
-			SetupCellTypes();
 		}
 
 		protected virtual void Start() {
@@ -93,7 +93,7 @@ namespace Spreadsheet {
 			if (Application.isPlaying) {
 				Cell cell = go.GetComponent<Cell>();
 				if (cell != null) {
-					FreeCellUi(cell);
+					cellGenerator.FreeCellUi(cell);
 				} else {
 					Destroy(go);
 				}
@@ -113,7 +113,7 @@ namespace Spreadsheet {
 
 		public void SetPopup(Cell cell, string text) {
 			if (_popupUiElement == null) {
-				Cell popup = MakeNewCell(_popupUiIndex).Set(this, CellPosition.Invalid);
+				Cell popup = cellGenerator.MakeNewCell(_popupUiIndex).Set(this, CellPosition.Invalid);
 				_popupUiElement = popup.RectTransform;
 			} else {
 				_popupUiElement.SetAsLastSibling();
@@ -126,6 +126,5 @@ namespace Spreadsheet {
 			popupRectTransform.anchoredPosition = corners[0];
 			_popupUiElement.gameObject.SetActive(true);
 		}
-
 	}
 }
