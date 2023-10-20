@@ -3,7 +3,7 @@ namespace Spreadsheet {
 	public class Column {
 		public string label;
 		public Cell headerCell;
-
+		public float xPosition;
 		public float width;
 		public int cellType;
 

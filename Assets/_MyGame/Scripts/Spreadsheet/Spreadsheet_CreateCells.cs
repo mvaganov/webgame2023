@@ -6,14 +6,18 @@ namespace Spreadsheet {
 	public partial class Spreadsheet {
 		public Vector2 columnRowHeaderSize = new Vector2(100, 40);
 		public Vector2 cellPadding = new Vector2(2, 1);
-		private List<CellPosition> _toRemoveDuringUpdate = new List<CellPosition>();
-		private List<CellPosition> _toAddDuringUpdate = new List<CellPosition>();
+		private List<CellPosition> _removeDuringUpdate = new List<CellPosition>();
+		private List<CellPosition> _addDuringUpdate = new List<CellPosition>();
 		private bool _updatingVisiblity;
 		private CellRange? _rangeToUpdateAsap;
 		private CellRange _lastRendered = CellRange.Invalid;
 		private Vector3[] _viewportCorners = new Vector3[4];
 		private Vector3[] _contentCorners = new Vector3[4];
+		private bool _refreshRowPositions = true, _refreshColumnPositions = true;
 
+		/// <summary>
+		/// Refreshes cells if <see cref="RefreshCells(CellRange)"/> was called while cells were refreshing
+		/// </summary>
 		private void UpdateRefreshCells() {
 			if (_rangeToUpdateAsap == null || _updatingVisiblity) {
 				return;
@@ -27,13 +31,12 @@ namespace Spreadsheet {
 				return;
 			}
 			_rangeToUpdateAsap = null;
-			//Debug.Log(visibleRange);
 			StartCoroutine(UpdateCells(visibleRange));
 		}
 
 		private IEnumerator UpdateCells(CellRange visibleRange) {
 			_updatingVisiblity = true;
-			PopulateAddAndRemoveLists(visibleRange);
+			MarkWhichCellsChangedVisibility(visibleRange);
 			RemoveLostCells();
 			//Debug.Log($"old: {_lastRendered}  new: {visibleRange}\n" +
 			//	$"newcells: [{string.Join(", ", _toAddDuringUpdate)}]\n" +
@@ -44,9 +47,9 @@ namespace Spreadsheet {
 			_updatingVisiblity = false;
 		}
 
-		private void PopulateAddAndRemoveLists(CellRange visibleRange) {
-			_toRemoveDuringUpdate.Clear();
-			_toAddDuringUpdate.Clear();
+		private void MarkWhichCellsChangedVisibility(CellRange visibleRange) {
+			_removeDuringUpdate.Clear();
+			_addDuringUpdate.Clear();
 			if (_lastRendered == visibleRange) {
 				return;
 			}
@@ -57,11 +60,15 @@ namespace Spreadsheet {
 			intersection.Intersection(_lastRendered);
 			union.ForEach(cpos => {
 				if (intersection.Contains(cpos)) { return; }
-				if (_lastRendered.Contains(cpos)) { _toRemoveDuringUpdate.Add(cpos); }
-				if (visibleRange.Contains(cpos)) { _toAddDuringUpdate.Add(cpos); }
+				if (_lastRendered.Contains(cpos)) { _removeDuringUpdate.Add(cpos); }
+				if (visibleRange.Contains(cpos)) { _addDuringUpdate.Add(cpos); }
 			});
 		}
 
+		/// <summary>
+		/// TODO finish implementing this method, to add extra cells to be displayed
+		/// </summary>
+		/// <param name="visibleRange"></param>
 		private void PredictOneMoreCell(ref CellRange visibleRange) {
 			CellPosition deltaStart = visibleRange.Start - _lastRendered.Start;
 			CellPosition deltaEnd = visibleRange.End - _lastRendered.End;
@@ -78,8 +85,8 @@ namespace Spreadsheet {
 		}
 
 		private void RemoveLostCells() {
-			for (int i = 0; i < _toRemoveDuringUpdate.Count; ++i) {
-				CellPosition cpos = _toRemoveDuringUpdate[i];
+			for (int i = 0; i < _removeDuringUpdate.Count; ++i) {
+				CellPosition cpos = _removeDuringUpdate[i];
 				cellGenerator.FreeCellUi(GetCellUi(cpos));
 			}
 		}
@@ -99,8 +106,8 @@ namespace Spreadsheet {
 		}
 
 		private void CreateNewCells() {
-			for (int i = 0; i < _toAddDuringUpdate.Count; ++i) {
-				CellPosition cpos = _toAddDuringUpdate[i];
+			for (int i = 0; i < _addDuringUpdate.Count; ++i) {
+				CellPosition cpos = _addDuringUpdate[i];
 				Vector2 cursor = GetCellDrawPosition(cpos);
 				Cell cell = cellGenerator.MakeNewCell(columns[cpos.Column].cellType).Set(this, cpos);
 				PlaceCell(cell, cursor);
@@ -116,6 +123,7 @@ namespace Spreadsheet {
 				cursor.x += columns[c].width + cellPadding.x;
 			}
 			return cursor;
+			//return new Vector2(columns[cellPosition.Column].xPosition, rows[cellPosition.Row].yPosition);
 		}
 
 		private RectTransform PlaceCell(Cell cell, Vector3 cursor) {
@@ -143,20 +151,42 @@ namespace Spreadsheet {
 			float top = viewportHeight - (_contentCorners[1].y - _viewportCorners[0].y);
 			//float bottom = viewportHeight - (contentCorners[0].y - viewportCorners[0].y);
 			Vector2 cursor = new Vector2(left, top);
-			for (int r = 0; r < rows.Count; ++r) {
-				cursor.y += rows[r].height + cellPadding.y;
-				range.Start.Row = r;
-				if (cursor.y >= 0) {
-					break;
-				}
+			Row row = new Row(null, null, 0);
+			row.yPosition = 0;
+			if (_refreshRowPositions) {
+				CalculateRowPositions();
+				_refreshRowPositions = false;
+				//float cursory = 0;
+				//for (int r = 0; r < rows.Count; ++r) {
+				//	rows[r].yPosition = cursory;
+				//	cursory += rows[r].height + cellPadding.y;
+				//	range.Start.Row = r;
+				//	if (cursory >= 0) {
+				//		break;
+				//	}
+				//}
 			}
-			for (int c = 0; c < columns.Count; ++c) {
-				cursor.x += columns[c].width + cellPadding.x;
-				range.Start.Column = c;
-				if (cursor.x >= 0) {
-					break;
-				}
+			if (_refreshColumnPositions) {
+				CalculateColumnPositions();
+				_refreshColumnPositions = false;
+				//float cursorx = 0;
+				//for (int c = 0; c < columns.Count; ++c) {
+				//	columns[c].xPosition = cursorx;
+				//	cursorx += columns[c].width + cellPadding.x;
+				//	range.Start.Column = c;
+				//	if (cursorx >= 0) {
+				//		break;
+				//	}
+				//}
 			}
+			
+			range.Start.Row = BinarySearchRows(rows, 0, r => r.yPosition, true);
+			range.Start.Column = BinarySearchRows(columns, 0, c => c.xPosition, true);
+
+			// TODO the binary search for the end of the visible area should work too... when I am less sleepy.
+			range.End.Row = BinarySearchRows(rows, viewportHeight, r => r.yPosition, true);
+			range.End.Column = BinarySearchRows(columns, viewportWidth, c => c.xPosition, true);
+
 			range.End = range.Start;
 			//Debug.Log($"top {top}, left {left}\n{cursor} vs ({viewportWidth}, {viewportHeight})");
 			if (cursor.y < viewportHeight) {
@@ -179,6 +209,47 @@ namespace Spreadsheet {
 			}
 			//Debug.Log(range);
 			return range;
+		}
+
+		private void CalculateRowPositions() {
+			float cursor = 0;
+			for (int r = 0; r < rows.Count; ++r) {
+				rows[r].yPosition = cursor;
+				cursor += rows[r].height + cellPadding.y;
+				//range.Start.Row = r;
+				//if (cursor.y >= 0) {
+				//	break;
+				//}
+			}
+		}
+
+		private void CalculateColumnPositions() {
+			float cursor = 0;
+			for (int c = 0; c < columns.Count; ++c) {
+				columns[c].xPosition = cursor;
+				cursor += columns[c].width + cellPadding.x;
+				//range.Start.Column = c;
+				//if (cursor.x >= 0) {
+				//	break;
+				//}
+			}
+		}
+
+		private static int BinarySearchRows<T>(IList<T> list, float y, System.Func<T, float> getNum, bool lower) {
+			int left = 0;
+			int right = list.Count - 1;
+			while (left <= right) {
+				int middle = (left + right) / 2;
+				float comparison = getNum(list[middle]);// list[middle].yPosition.CompareTo(y);
+				if (comparison == 0) {
+					return middle;
+				} else if (comparison < 0) {
+					left = middle + 1;
+				} else {
+					right = middle - 1;
+				}
+			}
+			return lower ? left : right;
 		}
 
 		private void RefreshVisibleCells(CellRange visibleRange) {
@@ -276,7 +347,6 @@ namespace Spreadsheet {
 
 		public void GenerateCells() {
 			Vector2 cursor = Vector2.zero;
-			cells.Clear();
 			for (int r = 0; r < rows.Count; ++r) {
 				Row row = rows[r];
 				cursor.x = 0;

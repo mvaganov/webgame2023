@@ -15,6 +15,7 @@ namespace Spreadsheet {
 		public Cell headerCell;
 		public Func<string, Parse.Error> setHeader;
 
+		public float yPosition;
 		public float height;
 		public string[] output;
 		[SerializeField] private object _data;

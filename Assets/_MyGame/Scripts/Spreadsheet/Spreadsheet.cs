@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -11,7 +10,6 @@ namespace Spreadsheet {
 		public Vector2 defaultCellSize = new Vector2(100, 30);
 		public List<Column> columns = new List<Column>();
 		public List<Row> rows = new List<Row>();
-		public List<Cell> cells = new List<Cell>();
 		public Color multiSelectColor;
 		private PointerEventData _fakePointerEventData;
 		private int _popupUiIndex;
