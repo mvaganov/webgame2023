@@ -31,10 +31,10 @@ namespace Spreadsheet {
 				return;
 			}
 			_rangeToUpdateAsap = null;
-			StartCoroutine(UpdateCells(visibleRange));
+			StartCoroutine(RefreshCellsCoroutine(visibleRange));
 		}
 
-		private IEnumerator UpdateCells(CellRange visibleRange) {
+		private IEnumerator RefreshCellsCoroutine(CellRange visibleRange) {
 			_updatingVisiblity = true;
 			MarkWhichCellsChangedVisibility(visibleRange);
 			RemoveLostCells();
@@ -108,22 +108,17 @@ namespace Spreadsheet {
 		private void CreateNewCells() {
 			for (int i = 0; i < _addDuringUpdate.Count; ++i) {
 				CellPosition cpos = _addDuringUpdate[i];
-				Vector2 cursor = GetCellDrawPosition(cpos);
+				//Vector2 cursor = GetCellDrawPosition(cpos);
 				Cell cell = cellGenerator.MakeNewCell(columns[cpos.Column].cellType).Set(this, cpos);
-				PlaceCell(cell, cursor);
+				PlaceCell(cell, GetCellDrawPosition(cpos));
 			}
 		}
 
 		public Vector2 GetCellDrawPosition(CellPosition cellPosition) {
-			Vector2 cursor = Vector2.zero;
-			for (int r = 0; r < cellPosition.Row; ++r) {
-				cursor.y -= rows[r].height + cellPadding.y;
-			}
-			for (int c = 0; c < cellPosition.Column; ++c) {
-				cursor.x += columns[c].width + cellPadding.x;
-			}
-			return cursor;
-			//return new Vector2(columns[cellPosition.Column].xPosition, rows[cellPosition.Row].yPosition);
+			RefreshCellPositionLookupTable();
+			float x = cellPosition.Column >= 0 ? columns[cellPosition.Column].xPosition : 0;
+			float y = cellPosition.Row >= 0 ? -rows[cellPosition.Row].yPosition : 0;
+			return new Vector2(x, y);
 		}
 
 		private RectTransform PlaceCell(Cell cell, Vector3 cursor) {
@@ -140,75 +135,27 @@ namespace Spreadsheet {
 
 		public CellRange GetVisibleCellRange() {
 			CellRange range = new CellRange();
-			ScrollView.viewport.GetWorldCorners(_viewportCorners);
-			ScrollView.content.GetWorldCorners(_contentCorners);
-			float viewportHeight = _viewportCorners[1].y - _viewportCorners[0].y;
-			float viewportWidth = _viewportCorners[2].x - _viewportCorners[0].x;
-			//float contentHeight = contentCorners[1].y - contentCorners[0].y;
-			float left = _contentCorners[0].x - _viewportCorners[0].x;
-			//float right = contentCorners[2].x - viewportCorners[0].x;
-			// need to slip vertical, since Unity likes 0,0 at the lower left, and we want 0,0 at the top left
-			float top = viewportHeight - (_contentCorners[1].y - _viewportCorners[0].y);
-			//float bottom = viewportHeight - (contentCorners[0].y - viewportCorners[0].y);
-			Vector2 cursor = new Vector2(left, top);
-			Row row = new Row(null, null, 0);
-			row.yPosition = 0;
+			RefreshCellPositionLookupTable();
+			Vector2 start = ScrollView.content.anchoredPosition;
+			start.x *= -1;
+			Vector2 end = start + ScrollView.viewport.rect.size;
+			range.Start.Row = BinarySearchLookupTable(rows, start.y, r => r.yPosition);
+			range.Start.Column = BinarySearchLookupTable(columns, start.x, c => c.xPosition);
+			range.End.Row = BinarySearchLookupTable(rows, end.y, r => r.yPosition);
+			range.End.Column = BinarySearchLookupTable(columns, end.x, c => c.xPosition);
+			range.Intersection(AllRange);
+			return range;
+		}
+
+		private void RefreshCellPositionLookupTable() {
 			if (_refreshRowPositions) {
 				CalculateRowPositions();
 				_refreshRowPositions = false;
-				//float cursory = 0;
-				//for (int r = 0; r < rows.Count; ++r) {
-				//	rows[r].yPosition = cursory;
-				//	cursory += rows[r].height + cellPadding.y;
-				//	range.Start.Row = r;
-				//	if (cursory >= 0) {
-				//		break;
-				//	}
-				//}
 			}
 			if (_refreshColumnPositions) {
 				CalculateColumnPositions();
 				_refreshColumnPositions = false;
-				//float cursorx = 0;
-				//for (int c = 0; c < columns.Count; ++c) {
-				//	columns[c].xPosition = cursorx;
-				//	cursorx += columns[c].width + cellPadding.x;
-				//	range.Start.Column = c;
-				//	if (cursorx >= 0) {
-				//		break;
-				//	}
-				//}
 			}
-			
-			range.Start.Row = BinarySearchRows(rows, 0, r => r.yPosition, true);
-			range.Start.Column = BinarySearchRows(columns, 0, c => c.xPosition, true);
-
-			// TODO the binary search for the end of the visible area should work too... when I am less sleepy.
-			range.End.Row = BinarySearchRows(rows, viewportHeight, r => r.yPosition, true);
-			range.End.Column = BinarySearchRows(columns, viewportWidth, c => c.xPosition, true);
-
-			range.End = range.Start;
-			//Debug.Log($"top {top}, left {left}\n{cursor} vs ({viewportWidth}, {viewportHeight})");
-			if (cursor.y < viewportHeight) {
-				for (int r = range.Start.Row + 1; r < rows.Count; ++r) {
-					cursor.y += rows[r].height + cellPadding.y;
-					range.End.Row = r;
-					if (cursor.y >= viewportHeight) {
-						break;
-					}
-				}
-			}
-			if (cursor.x < viewportWidth) {
-				for (int c = range.Start.Column + 1; c < columns.Count; ++c) {
-					cursor.x += columns[c].width + cellPadding.x;
-					range.End.Column = c;
-					if (cursor.x >= viewportWidth) {
-						break;
-					}
-				}
-			}
-			//Debug.Log(range);
-			return range;
 		}
 
 		private void CalculateRowPositions() {
@@ -216,10 +163,6 @@ namespace Spreadsheet {
 			for (int r = 0; r < rows.Count; ++r) {
 				rows[r].yPosition = cursor;
 				cursor += rows[r].height + cellPadding.y;
-				//range.Start.Row = r;
-				//if (cursor.y >= 0) {
-				//	break;
-				//}
 			}
 		}
 
@@ -228,19 +171,22 @@ namespace Spreadsheet {
 			for (int c = 0; c < columns.Count; ++c) {
 				columns[c].xPosition = cursor;
 				cursor += columns[c].width + cellPadding.x;
-				//range.Start.Column = c;
-				//if (cursor.x >= 0) {
-				//	break;
-				//}
 			}
 		}
 
-		private static int BinarySearchRows<T>(IList<T> list, float y, System.Func<T, float> getNum, bool lower) {
-			int left = 0;
-			int right = list.Count - 1;
+		/// <summary>
+		/// Used to find the best row/column index for the given x/y value
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="list"></param>
+		/// <param name="value"></param>
+		/// <param name="getNum"></param>
+		/// <returns></returns>
+		private static int BinarySearchLookupTable<T>(IList<T> list, float value, System.Func<T, float> getNum) {
+			int left = 0, right = list.Count - 1;
 			while (left <= right) {
 				int middle = (left + right) / 2;
-				float comparison = getNum(list[middle]);// list[middle].yPosition.CompareTo(y);
+				int comparison = getNum.Invoke(list[middle]).CompareTo(value);
 				if (comparison == 0) {
 					return middle;
 				} else if (comparison < 0) {
@@ -249,7 +195,7 @@ namespace Spreadsheet {
 					right = middle - 1;
 				}
 			}
-			return lower ? left : right;
+			return left - 1;
 		}
 
 		private void RefreshVisibleCells(CellRange visibleRange) {
@@ -306,6 +252,7 @@ namespace Spreadsheet {
 
 		public void GenerateColumnHeaders() {
 			ClearColumnHeaders();
+			// TODO use GetCellDrawPosition(cpos) instead of calculating the cursor value manually in the loop.
 			float cursor = 0;
 			for (int i = 0; i < columns.Count; ++i) {
 				CellPosition cpos = new CellPosition(-1, i);
