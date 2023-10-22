@@ -71,6 +71,12 @@ namespace Spreadsheet {
 		public void AssignSetFunction(System.Func<object, object, Parse.Error> func) {
 			UnityEvent<string> submitEvent = Ui.GetTextSubmitEvent(GetComponent<RectTransform>());
 			if (submitEvent == null) { return; }
+			if (spreadsheet == null) {
+				Debug.Log("failed to assign spreadsheet?");
+			}
+			if (spreadsheet.rows[position.Row] == null) {
+				Debug.Log("missing Rows?");
+			}
 			object obj = spreadsheet.rows[position.Row].data;
 			setCellData = str => func.Invoke(obj, str);
 			submitEvent.RemoveAllListeners();

@@ -8,7 +8,7 @@ namespace Spreadsheet {
 		public Vector2 cellPadding = new Vector2(2, 1);
 		private List<CellPosition> _removeDuringUpdate = new List<CellPosition>();
 		private List<CellPosition> _addDuringUpdate = new List<CellPosition>();
-		private bool _updatingVisiblity;
+		private int _updatingVisiblity;
 		private CellRange? _rangeToUpdateAsap;
 		private CellRange _lastRendered = CellRange.Invalid;
 		private Vector3[] _viewportCorners = new Vector3[4];
@@ -19,14 +19,14 @@ namespace Spreadsheet {
 		/// Refreshes cells if <see cref="RefreshCells(CellRange)"/> was called while cells were refreshing
 		/// </summary>
 		private void UpdateRefreshCells() {
-			if (_rangeToUpdateAsap == null || _updatingVisiblity) {
+			if (_rangeToUpdateAsap == null || _updatingVisiblity > 0) {
 				return;
 			}
 			RefreshCells(_rangeToUpdateAsap.Value);
 		}
 
 		public void RefreshCells(CellRange visibleRange) {
-			if (_updatingVisiblity) {
+			if (_updatingVisiblity > 0) {
 				_rangeToUpdateAsap = visibleRange;
 				return;
 			}
@@ -35,7 +35,10 @@ namespace Spreadsheet {
 		}
 
 		private IEnumerator RefreshCellsCoroutine(CellRange visibleRange) {
-			_updatingVisiblity = true;
+			++_updatingVisiblity;
+			if (_updatingVisiblity > 1) {
+				Debug.LogWarning("we've done it again...");
+			}
 			MarkWhichCellsChangedVisibility(visibleRange);
 			RemoveLostCells();
 			//Debug.Log($"old: {_lastRendered}  new: {visibleRange}\n" +
@@ -44,7 +47,7 @@ namespace Spreadsheet {
 			yield return null;
 			CreateNewCells();
 			RefreshVisibleCells(visibleRange);
-			_updatingVisiblity = false;
+			--_updatingVisiblity;
 		}
 
 		private void MarkWhichCellsChangedVisibility(CellRange visibleRange) {
@@ -109,7 +112,15 @@ namespace Spreadsheet {
 			for (int i = 0; i < _addDuringUpdate.Count; ++i) {
 				CellPosition cpos = _addDuringUpdate[i];
 				//Vector2 cursor = GetCellDrawPosition(cpos);
-				Cell cell = cellGenerator.MakeNewCell(columns[cpos.Column].cellType).Set(this, cpos);
+				Cell cell = GetCellUi(cpos);
+				if (cell != null) {
+					if (cell.position != cpos) {
+						Debug.LogError($"invalid cell position at cell {cpos}");
+					}
+					cell.Set(this, cpos);
+				} else {
+					cell = cellGenerator.MakeNewCell(columns[cpos.Column].cellType).Set(this, cpos);
+				}
 				PlaceCell(cell, GetCellDrawPosition(cpos));
 			}
 		}
@@ -128,6 +139,7 @@ namespace Spreadsheet {
 			int r = cell.position.Row;
 			int c = cell.position.Column;
 			rect.sizeDelta = new Vector2(columns[c].width, rows[r].height);
+			cell.spreadsheet = this;
 			cell.AssignSetFunction(columns[c].SetData);
 			rect.name = cell.position.ToString();
 			return rect;
@@ -229,6 +241,11 @@ namespace Spreadsheet {
 				rows[cellPosition.Row].headerCell = cell;
 			}
 			if (cellToFree != null) {
+				if (cellToFree == cell && cell != null) {
+					Debug.Log("well this is strange. attempting to re assign the same cell to the same spot?");
+					cell.gameObject.SetActive(true);
+					return;
+				}
 				cellGenerator.FreeCellUi(cellToFree);
 			}
 		}

@@ -8,13 +8,13 @@ namespace Spreadsheet {
 		public ScrollRect ScrollView;
 		public CellGenerator cellGenerator;
 		public Vector2 defaultCellSize = new Vector2(100, 30);
-		public List<Column> columns = new List<Column>();
-		public List<Row> rows = new List<Row>();
 		public Color multiSelectColor;
 		private PointerEventData _fakePointerEventData;
 		private int _popupUiIndex;
 		private RectTransform _popupUiElement;
 		private RectTransform _transform;
+		public List<Column> columns = new List<Column>();
+		public List<Row> rows = new List<Row>();
 
 		public RectTransform ContentArea => ScrollView.content;
 
