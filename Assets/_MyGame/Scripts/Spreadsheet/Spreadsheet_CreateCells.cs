@@ -243,7 +243,6 @@ namespace Spreadsheet {
 			if (cellToFree != null) {
 				if (cellToFree == cell && cell != null) {
 					Debug.Log("well this is strange. attempting to re assign the same cell to the same spot?");
-					cell.gameObject.SetActive(true);
 					return;
 				}
 				cellGenerator.FreeCellUi(cellToFree);
