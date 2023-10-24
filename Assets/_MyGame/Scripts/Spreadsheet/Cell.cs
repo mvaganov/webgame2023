@@ -60,11 +60,7 @@ namespace Spreadsheet {
 		}
 
 		public Cell Set(Spreadsheet spreadsheet, CellPosition cellPosition) {
-			if (spreadsheet.GetCellUi(cellPosition) == this) {
-				Debug.Log("this is weird.");
-			}
 			this.spreadsheet = spreadsheet;
-			//spreadsheet.SetCellUi(cellPosition, this);
 			spreadsheet.AssignCell(cellPosition, this);
 			Selected = spreadsheet.IsSelected(cellPosition);
 			position = cellPosition;

@@ -121,6 +121,7 @@ namespace Spreadsheet {
 		public CellRange(int row, int column) : this (new CellPosition(row, column)) { }
 		public CellRange(CellPosition position) { Start = End = position; }
 		public CellRange(CellPosition start, CellPosition end) { Start = start; End = end; }
+		public CellRange(CellRange range) : this(range.Start, range.End) { }
 		public bool Equals(CellRange other) => Start == other.Start && End == other.End;
 		public static bool operator ==(CellRange left, CellRange right) => left.Equals(right);
 		public static bool operator !=(CellRange left, CellRange right) => !left.Equals(right);
@@ -170,6 +171,10 @@ namespace Spreadsheet {
 			}
 		}
 
+		/// <summary>
+		/// Goes through Start (inclusive) to End (inclusive), Row by Column.
+		/// </summary>
+		/// <param name="action"></param>
 		public void ForEach(Action<CellPosition> action) {
 			CellPosition cursor = Start;
 			for (cursor.Row = Start.Row; cursor.Row <= End.Row; ++cursor.Row) {
@@ -179,18 +184,30 @@ namespace Spreadsheet {
 			}
 		}
 
-		public void Union(CellRange other) {
+		public void AddToUnion(CellRange other) {
 			if (other.Start.Row    < Start.Row)    { Start.Row = other.Start.Row; }
 			if (other.Start.Column < Start.Column) { Start.Column = other.Start.Column; }
 			if (other.End.Row      > End.Row)      { End.Row = other.End.Row; }
 			if (other.End.Column   > End.Column)   { End.Column = other.End.Column; }
 		}
 
-		internal void Intersection(CellRange other) {
+		public void ExcludeToIntersection(CellRange other) {
 			if (other.Start.Row    > Start.Row)    { Start.Row = other.Start.Row; }
 			if (other.Start.Column > Start.Column) { Start.Column = other.Start.Column; }
 			if (other.End.Row      < End.Row)      { End.Row = other.End.Row; }
 			if (other.End.Column   < End.Column)   { End.Column = other.End.Column; }
+		}
+
+		public static CellRange Union(CellRange a, CellRange b) {
+			CellRange union = new CellRange(a);
+			union.AddToUnion(b);
+			return union;
+		}
+
+		public static CellRange Intersection(CellRange a, CellRange b) {
+			CellRange intersection = new CellRange(a);
+			intersection.ExcludeToIntersection(b);
+			return intersection;
 		}
 	}
 }

@@ -1,9 +1,8 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Spreadsheet {
-  public class CellGenerator : MonoBehaviour {
+	public class CellGenerator : MonoBehaviour {
 		[System.Serializable]
 		public class CellType {
 			public string name;

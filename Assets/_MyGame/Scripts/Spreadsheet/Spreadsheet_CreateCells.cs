@@ -14,6 +14,7 @@ namespace Spreadsheet {
 		private Vector3[] _viewportCorners = new Vector3[4];
 		private Vector3[] _contentCorners = new Vector3[4];
 		private bool _refreshRowPositions = true, _refreshColumnPositions = true;
+		private static bool _beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast = false;
 
 		/// <summary>
 		/// Refreshes cells if <see cref="RefreshCells(CellRange)"/> was called while cells were refreshing
@@ -39,33 +40,54 @@ namespace Spreadsheet {
 			if (_updatingVisiblity > 1) {
 				Debug.LogWarning("we've done it again...");
 			}
-			MarkWhichCellsChangedVisibility(visibleRange);
-			RemoveLostCells();
-			//Debug.Log($"old: {_lastRendered}  new: {visibleRange}\n" +
-			//	$"newcells: [{string.Join(", ", _toAddDuringUpdate)}]\n" +
-			//	$"oldCells: [{string.Join(", ", _toRemoveDuringUpdate)}]");
+			MarkWhichCellsChangedVisibility(visibleRange, _removeDuringUpdate, _addDuringUpdate);
+			RemoveLostCells(_removeDuringUpdate);
 			yield return null;
-			CreateNewCells();
+			CreateNewCells(_addDuringUpdate);
 			RefreshVisibleCells(visibleRange);
+			_lastRendered = visibleRange;
 			--_updatingVisiblity;
+			if (_beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast) {
+				List<CellPosition> missing = new List<CellPosition>();
+				if (MissingVisibleCells(_lastRendered, missing)) {
+					Debug.LogError($"Oh no! missing [{string.Join(", ", missing)}]\n" +
+					$"newcells: [{string.Join(", ", _addDuringUpdate)}]\n" +
+					$"oldCells: [{string.Join(", ", _removeDuringUpdate)}]");
+					CreateNewCells(missing);
+					RefreshVisibleCells(visibleRange);
+				}
+			}
 		}
 
-		private void MarkWhichCellsChangedVisibility(CellRange visibleRange) {
-			_removeDuringUpdate.Clear();
-			_addDuringUpdate.Clear();
+		private void MarkWhichCellsChangedVisibility(CellRange visibleRange, List<CellPosition> remove, List<CellPosition> add) {
+			remove.Clear();
+			add.Clear();
 			if (_lastRendered == visibleRange) {
 				return;
 			}
-			//PredictOneMoreCell(ref visibleRange);
-			CellRange union = visibleRange;
-			CellRange intersection = visibleRange;
-			union.Union(_lastRendered);
-			intersection.Intersection(_lastRendered);
+			CellRange union = CellRange.Union(visibleRange, _lastRendered);
+			CellRange intersection = CellRange.Intersection(visibleRange, _lastRendered);
 			union.ForEach(cpos => {
-				if (intersection.Contains(cpos)) { return; }
-				if (_lastRendered.Contains(cpos)) { _removeDuringUpdate.Add(cpos); }
-				if (visibleRange.Contains(cpos)) { _addDuringUpdate.Add(cpos); }
+				if (intersection.Contains(cpos)) {
+					if (GetCellUi(cpos) == null) {
+						add.Add(cpos);
+					}
+					return;
+				}
+				if (_lastRendered.Contains(cpos)) { remove.Add(cpos); }
+				if (visibleRange.Contains(cpos)) { add.Add(cpos); }
 			});
+		}
+
+		private bool MissingVisibleCells(CellRange visibleRange, List<CellPosition> missing) {
+			missing.Clear();
+			visibleRange.ForEach(cpos => {
+				if (GetCellUi(cpos) != null) {
+					return;
+				}
+				missing.Add(cpos);
+			});
+			return missing.Count > 0;
 		}
 
 		/// <summary>
@@ -84,12 +106,12 @@ namespace Spreadsheet {
 				if (delta.Column < 0) { visibleRange.Start.Column += delta.Column; }
 				if (delta.Column > 0) { visibleRange.End.Row += delta.Column; }
 			}
-			visibleRange.Intersection(AllRange);
+			visibleRange.ExcludeToIntersection(AllRange);
 		}
 
-		private void RemoveLostCells() {
-			for (int i = 0; i < _removeDuringUpdate.Count; ++i) {
-				CellPosition cpos = _removeDuringUpdate[i];
+		private void RemoveLostCells(List<CellPosition> toRemove) {
+			for (int i = 0; i < toRemove.Count; ++i) {
+				CellPosition cpos = toRemove[i];
 				cellGenerator.FreeCellUi(GetCellUi(cpos));
 			}
 		}
@@ -108,10 +130,9 @@ namespace Spreadsheet {
 			return null;
 		}
 
-		private void CreateNewCells() {
-			for (int i = 0; i < _addDuringUpdate.Count; ++i) {
-				CellPosition cpos = _addDuringUpdate[i];
-				//Vector2 cursor = GetCellDrawPosition(cpos);
+		private void CreateNewCells(List<CellPosition> toAdd) {
+			for (int i = 0; i < toAdd.Count; ++i) {
+				CellPosition cpos = toAdd[i];
 				Cell cell = GetCellUi(cpos);
 				if (cell != null) {
 					if (cell.position != cpos) {
@@ -155,7 +176,7 @@ namespace Spreadsheet {
 			range.Start.Column = BinarySearchLookupTable(columns, start.x, c => c.xPosition);
 			range.End.Row = BinarySearchLookupTable(rows, end.y, r => r.yPosition);
 			range.End.Column = BinarySearchLookupTable(columns, end.x, c => c.xPosition);
-			range.Intersection(AllRange);
+			range.ExcludeToIntersection(AllRange);
 			return range;
 		}
 
@@ -215,7 +236,6 @@ namespace Spreadsheet {
 				Row row = rows[r];
 				row.Refresh(this, visibleRange.Start.Column, visibleRange.End.Column);
 			}
-			_lastRendered = visibleRange;
 		}
 
 		public void AssignCell(CellPosition cellPosition, Cell cell) {
@@ -223,26 +243,34 @@ namespace Spreadsheet {
 			if (cellPosition.IsNormalPosition) {
 				Cell[] cellUiRow = rows[cellPosition.Row].GetCellLookupTable(true);
 				if (cell != null && cellUiRow[cellPosition.Column] != null) {
-					Debug.LogError($"set cell @ {cellPosition}, one already here!");
+					if (_beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast) {
+						Debug.LogError($"set cell @ {cellPosition}, one already here!");
+					}
 					cellToFree = cellUiRow[cellPosition.Column];
 				}
 				cellUiRow[cellPosition.Column] = cell;
 			} else if (cellPosition.IsEntireColumn) {
 				if (cell != null && columns[cellPosition.Column].headerCell != null) {
-					Debug.LogError($"set column header @ {cellPosition.Column}, one already here!");
+					if (_beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast) {
+						Debug.LogError($"set column header @ {cellPosition.Column}, one already here!");
+					}
 					cellToFree = columns[cellPosition.Column].headerCell;
 				}
 				columns[cellPosition.Column].headerCell = cell;
 			} else if (cellPosition.IsEntireRow) {
 				if (cell != null && rows[cellPosition.Row].headerCell != null) {
-					Debug.LogError($"set row header @ {cellPosition.Row}, one already here!");
+					if (_beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast) {
+						Debug.LogError($"set row header @ {cellPosition.Row}, one already here!");
+					}
 					cellToFree = rows[cellPosition.Row].headerCell;
 				}
 				rows[cellPosition.Row].headerCell = cell;
 			}
 			if (cellToFree != null) {
-				if (cellToFree == cell && cell != null) {
-					Debug.Log("well this is strange. attempting to re assign the same cell to the same spot?");
+				if (cellToFree == cell) {
+					if (_beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast) {
+						Debug.Log("well this is strange. attempting to re assign the same cell to the same spot?");
+					}
 					return;
 				}
 				cellGenerator.FreeCellUi(cellToFree);
@@ -268,7 +296,6 @@ namespace Spreadsheet {
 
 		public void GenerateColumnHeaders() {
 			ClearColumnHeaders();
-			// TODO use GetCellDrawPosition(cpos) instead of calculating the cursor value manually in the loop.
 			float cursor = 0;
 			for (int i = 0; i < columns.Count; ++i) {
 				CellPosition cpos = new CellPosition(-1, i);

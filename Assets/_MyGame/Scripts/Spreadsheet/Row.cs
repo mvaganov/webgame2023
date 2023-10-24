@@ -72,13 +72,13 @@ namespace Spreadsheet {
 			return cells;
 		}
 
-		public void Refresh(Spreadsheet sheet, int min = 0, int maxInclusive = -1) {
-			if (maxInclusive < 0) {
-				maxInclusive = cells.Length - 1;
+		public void Refresh(Spreadsheet sheet, int minColumn = 0, int maxColumnInclusive = -1) {
+			if (maxColumnInclusive < 0) {
+				maxColumnInclusive = cells.Length - 1;
 			}
-			Render(sheet.columns, min, maxInclusive);
+			Render(sheet.columns, minColumn, maxColumnInclusive);
 			if (cells == null || cells.Length == 0) { return; }
-			for (int i = min; i <= maxInclusive; ++i) {
+			for (int i = minColumn; i <= maxColumnInclusive; ++i) {
 				if (cells[i] == null) {
 					continue;
 				}
