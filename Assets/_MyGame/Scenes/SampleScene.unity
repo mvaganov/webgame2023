@@ -432,6 +432,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 201cd32d532b43540b2ff5a686249d99, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  text: 'this
+
+    is a test
+
+    of multiline
+
+    string parsing
+
+    woah
+
+'
+  textIndex: 15
+  doLineLetterTest: 0
 --- !u!4 &151851085
 Transform:
   m_ObjectHideFlags: 0
@@ -2240,10 +2253,9 @@ MonoBehaviour:
   ScrollView: {fileID: 1944211667}
   cellGenerator: {fileID: 380180290}
   defaultCellSize: {x: 100, y: 30}
+  multiSelectColor: {r: 0.8784314, g: 1, b: 0.8784314, a: 1}
   columns: []
   rows: []
-  cells: []
-  multiSelectColor: {r: 0.8784314, g: 1, b: 0.8784314, a: 1}
   columnRowHeaderSize: {x: 100, y: 40}
   cellPadding: {x: 2, y: 1}
   ColumnHeadersArea: {fileID: 83612069}

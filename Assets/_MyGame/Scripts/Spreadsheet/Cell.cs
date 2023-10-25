@@ -86,18 +86,21 @@ namespace Spreadsheet {
 			Parse.Error err = setCellData(str);
 			if (err != null && err.IsError) {
 				string errStr = err.ToString();
-				Debug.LogError(errStr);
+				Debug.LogError(errStr + "\n" + err.line+":"+err.letter+"  idx"+err.index);
 				spreadsheet.SetPopup(this, errStr);
 			} else {
-				Row row = spreadsheet.rows[position.Row];
-				if (row.Cells[position.Column] != this) {
-					throw new System.Exception($"expected to be modifying {this}\nfound {row.Cells[position.Row]}");
-				}
-				// don't refresh self, self is being modified by the user.
-				row.Cells[position.Column] = null;
-				row.Refresh(spreadsheet);
-				row.Cells[position.Column] = this;
+				RefreshRestOfRow();
 			}
+		}
+
+		public void RefreshRestOfRow() {
+			Row row = spreadsheet.rows[position.Row];
+			if (row.Cells[position.Column] != this) {
+				throw new System.Exception($"expected to be modifying {this}\nfound {row.Cells[position.Row]}");
+			}
+			row.Cells[position.Column] = null;
+			row.Refresh(spreadsheet);
+			row.Cells[position.Column] = this;
 		}
 
 		public void OnPointerMove(PointerEventData eventData) => spreadsheet.CellPointerMove(this);

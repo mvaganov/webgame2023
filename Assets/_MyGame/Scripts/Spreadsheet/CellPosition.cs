@@ -26,7 +26,7 @@ namespace Spreadsheet {
 				++columnEnd;
 			}
 			if (columnEnd == 0) {
-				return new Parse.Error("missing column identifier", str, 0, 0);
+				return new Parse.Error("missing column identifier", str, 0);
 			}
 			string columnId = str.Substring(0, columnEnd);
 			position.Column = ColumnStringToInt(columnId);
@@ -35,11 +35,11 @@ namespace Spreadsheet {
 				++rowEnd;
 			}
 			if (columnEnd == rowEnd) {
-				return new Parse.Error("missing row identifier", str, 0, columnEnd);
+				return new Parse.Error("missing row identifier", str, columnEnd);
 			}
 			string rowId = str.Substring(columnEnd, rowEnd - columnEnd);
 			position.Row = int.Parse(rowId);
-			return new Parse.Error(null, str, 0, rowEnd);
+			return new Parse.Error(null, str, rowEnd);
 		}
 		public static string ColumnIntToString(int columnIndex) {
 			if (columnIndex < 26) {
@@ -148,7 +148,7 @@ namespace Spreadsheet {
 			if (error != null && error.IsError) {
 				return error;
 			}
-			return new Parse.Error(null, str, 0, posStrStart + error.letter);
+			return new Parse.Error(null, str, posStrStart + error.letter);
 		}
 
 		public bool ContainsStrict(CellPosition position) {

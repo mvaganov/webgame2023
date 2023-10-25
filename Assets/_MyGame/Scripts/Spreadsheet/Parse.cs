@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 
 namespace Spreadsheet {
@@ -11,15 +12,49 @@ namespace Spreadsheet {
 			/// </summary>
 			public string err;
 			public string str;
+			public int index;
 			public int line, letter;
 			public object metadata;
 			public bool IsError => err != null;
 			public Error(string error) { err = error; }
-			public Error(string error, string str, int line, int letter) {
-				err = error; this.str = str; this.line = line; this.letter = letter;
+			public Error(string error, string str, int index, short line, short letter) {
+				err = error; this.str = str; this.index = index;
+			}
+			public Error(string error, string str, int index) {
+				err = error; this.str = str; this.index = index;
+				GetLineLetterFromIndex(str, index, out line, out letter);
 			}
 			public override string ToString() => err;
 		}
+
+		public static bool IsError(Error err) => err != null && err.IsError;
+
+		/// <summary>
+		/// for identifying string literal tokens in a parsed lexical tree
+		/// </summary>
+		public struct StringLiteral {
+			public string token;
+			public int sourceIndex;
+			public StringLiteral(string token, int index) { this.token = token; this.sourceIndex = index; }
+			public override string ToString() => token;
+			public int Length => token.Length;
+			public char this[int i] { get { return token[i]; } }
+			public static implicit operator string(StringLiteral token) => token.ToString();
+		}
+
+		/// <summary>
+		/// for identifying non-string-literal tokens in a parsed lexical tree
+		/// </summary>
+		public struct Token {
+			public string token;
+			public int sourceIndex;
+			public Token(string token, int index) { this.token = token; this.sourceIndex = index; }
+			public override string ToString() => token;
+			public int Length => token.Length;
+			public char this[int i] { get { return token[i]; } }
+			public static implicit operator string(Token token) => token.ToString();
+		}
+
 		public static Parse.Error ConvertFloatsList(object value, ref float[] result) {
 			switch (value) {
 				case float f:
@@ -52,7 +87,12 @@ namespace Spreadsheet {
 				case null:
 					return new Parse.Error($"null unacceptable");
 				case string s:
+					UnityEngine.Debug.Log($"parsing string '{s}'");
 					Parse.Error err = ParseFloatList(s, out List<float> out_numbers);
+					if (IsError(err)) {
+						return err;
+					}
+					UnityEngine.Debug.Log($"parsed [{out_numbers.Count}] {{{string.Join(",", out_numbers)}}}");
 					if (result == null || result.Length != out_numbers.Count) {
 						result = out_numbers.ToArray();
 					} else {
@@ -74,19 +114,179 @@ namespace Spreadsheet {
 			result = out_tokens;
 			return err;
 		}
+		
 		public static Parse.Error ParseFloatList(string text, out List<float> list) {
-			return ParseList(text, out list, Convert.ToSingle);
+			return ParseList(text, out list, ConvertToSingle);
 		}
-		public static Parse.Error ParseList<T>(string text, out List<T> list, Func<object, T> conversion) {
-			int index = 0;
-			List<object> out_tokens = new List<object>();
-			Parse.Error err = ParseList(text, ref index, out_tokens, null);
-			list = new List<T>();
-			for(int i = 0; i < out_tokens.Count; ++i) {
-				list.Add(conversion.Invoke(out_tokens[i]));
+
+		public static Parse.Error ConvertToSingle(object obj) {
+			Parse.Error err = new Error(null);
+			switch (obj) {
+				case Token:
+					err.err = $"cannot convert Token '{obj}' to float";
+					break;
+				case string:
+				case StringLiteral:
+					string str = obj.ToString();
+					if (!float.TryParse(str, out float parsed)) {
+						err.err = $"could not convert {str.GetType()} '{str}' to float";
+					}
+					err.metadata = parsed;
+					break;
+				case float f: err.metadata = f; break;
+				case double d: err.metadata = (float)d; break;
+				case int i: err.metadata = (float)i; break;
+				case long l: err.metadata = (float)l; break;
+				case short b: err.metadata = (float)b; break;
+				default:
+					err.metadata = Convert.ToSingle(obj);
+					break;
 			}
 			return err;
 		}
+
+		/// <summary>
+		/// parses text into a list, and attempts to convert all elements into type T
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="text"></param>
+		/// <param name="list"></param>
+		/// <param name="conversion">should return a <see cref="Parse.Error"/>, where the meta data is of type T</param>
+		/// <returns></returns>
+		public static Parse.Error ParseList<T>(string text, out List<T> list, Func<object, Parse.Error> conversion) {
+			int index = 0;
+			List<object> out_tokens = new List<object>();
+			Parse.Error err = ParseList(text, ref index, out_tokens, null);
+			if (IsError(err)) {
+				list = null;
+				return err;
+			}
+			UnityEngine.Debug.Log(DebugPrint(out_tokens, 0));
+			list = new List<T>();
+			for(int i = 0; i < out_tokens.Count; ++i) {
+				Parse.Error conversionError = conversion.Invoke(out_tokens[i]);
+				bool conversionHappenedCorrectly = conversionError != null && !conversionError.IsError;
+				if (conversionHappenedCorrectly) {
+					if(conversionError.metadata is T data) {
+						list.Add(data);
+					} else {
+						conversionHappenedCorrectly = false;
+					}
+				} else if(conversionError != null) {
+					ApplyErrorLocation(conversionError, text, out_tokens[i]);
+					UnityEngine.Debug.Log($"{out_tokens[i].GetType()},  {GetTokenIndex(out_tokens[i])} \'{text}\'");
+					return conversionError;
+				}
+				if (!conversionHappenedCorrectly) {
+					err = new Error($"could not convert token {i} ({out_tokens[i]} {out_tokens[i].GetType()}) into {typeof(T)} with {conversion.Method.Name}");
+					ApplyErrorLocation(err, text, out_tokens[i]);
+					return err;
+				}
+			}
+			return err;
+		}
+
+		private static void ApplyErrorLocation(Error error, string rootText, object token) {
+			int tokenIndex = GetTokenIndex(token);
+			error.index = tokenIndex;
+			Parse.GetLineLetterFromIndex(rootText, tokenIndex, out error.line, out error.letter);
+		}
+
+		public static int GetTokenIndex(object obj) {
+			switch (obj) {
+				case Token token: return token.sourceIndex;
+				case StringLiteral stringLiteral: return stringLiteral.sourceIndex;
+			}
+			return 0;
+		}
+
+		public static string DebugPrint(List<object> tokens, int indent) {
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < tokens.Count; ++i) {
+				if (i > 0) {
+					sb.Append("\n");
+				}
+				for(int ind = 0; ind < indent; ++ind) {
+					sb.Append("  ");
+				}
+				sb.Append(i).Append(" ");
+				if (tokens[i] == null) {
+					sb.Append("(null)");
+				}
+				switch (tokens[i]) {
+					case List<object> list:
+						sb.Append("list (").Append(list.Count).Append(")\n");
+						sb.Append(DebugPrint(list, indent + 1));
+						break;
+					default:
+						sb.Append($"({tokens[i].GetType()}) \'").Append(tokens[i].ToString()).Append("'");
+						break;
+				}
+			}
+			return sb.ToString();
+		}
+
+		/// <summary>
+		/// element zero is the number of rows. each element after that is the index starting that row.
+		/// [1] should always be zero, unless there is hidden header data.
+		/// </summary>
+		/// <param name="str"></param>
+		/// <param name="lineIndexTable"></param>
+		public static void CalculateLineIndexTable(string str, ref int[] lineIndexTable) {
+			int lineCount = 1;
+			for(int i = 0; i < str.Length; ++i) {
+				if (str[i] == '\n') { ++lineCount; }
+			}
+			if (lineIndexTable.Length < lineCount) {
+				lineIndexTable = new int[lineCount];
+			}
+			lineIndexTable[0] = lineCount;
+			int line = 1;
+			for (int i = 0; i < str.Length; ++i) {
+				if (str[i] == '\n') { lineIndexTable[line++] = i; }
+			}
+		}
+
+		public static void GetLineLetterFromIndex(int[] lineIndexTable, int index, out int line, out int letter) {
+			line = Array.BinarySearch(lineIndexTable, 1, lineIndexTable[0]-1, index);
+			if (line < 0) { line = (~line); }
+			if (line == 1) {
+				letter = index + 1;
+			} else {
+				letter = index - lineIndexTable[line - 1];
+			}
+		}
+
+		private static Dictionary<Thread, int[]> _lineIndexCalculatorByThread = new Dictionary<Thread, int[]>();
+
+		public static void GetLineLetterFromIndex(string text, int index, out int line, out int letter) {
+			int[] lineIndexTable = GetThreadedLineIndexTable();
+			CalculateLineIndexTable(text, ref lineIndexTable);
+			_lineIndexCalculatorByThread[Thread.CurrentThread] = lineIndexTable;
+			GetLineLetterFromIndex(lineIndexTable, index, out line, out letter);
+			int[] GetThreadedLineIndexTable() {
+				Thread t = Thread.CurrentThread;
+				if (!_lineIndexCalculatorByThread.TryGetValue(t, out int[] table)) {
+					table = _lineIndexCalculatorByThread[t] = new int[1];
+				}
+				ClearDeadThreadsHoldingIndexTables();
+				return table;
+				void ClearDeadThreadsHoldingIndexTables() {
+					List<Thread> deadThreads = null;
+					foreach (var kvp in _lineIndexCalculatorByThread) {
+						if (!kvp.Key.IsAlive) {
+							if (deadThreads == null) { deadThreads = new List<Thread>(); }
+							deadThreads.Add(kvp.Key);
+						}
+					}
+					if (deadThreads == null) { return; }
+					for (int i = 0; i < deadThreads.Count; ++i) {
+						_lineIndexCalculatorByThread.Remove(deadThreads[i]);
+					}
+				}
+			}
+		}
+
 		public static Parse.Error ParseList(string text, ref int index, List<object> out_tokens, Func<char, bool> isFinished) {
 			int tokenStart = -1, tokenEnd = -1;
 			bool readingDigits = false;
@@ -106,7 +306,7 @@ namespace Spreadsheet {
 					if (c == '\\') {
 						++index;
 						if (index >= text.Length) {
-							return new Parse.Error($"escape sequence missing next letter @ {index-1}", text, 0, index);
+							return new Parse.Error($"escape sequence missing next letter @ {index-1}", text, index);
 						}
 					} else if(c == readingStringLiteral) {
 						tokenEnd = index;
@@ -117,7 +317,7 @@ namespace Spreadsheet {
 					}
 					++index;
 					if (index > text.Length) {
-						return new Parse.Error($"missing {readingStringLiteral} for unfinished string literal @ {tokenStart}", text, 0, tokenStart);
+						return new Parse.Error($"missing {readingStringLiteral} for unfinished string literal @ {tokenStart}", text, tokenStart);
 					}
 					continue;
 				} else if (IsWhiteSpace(c)) {
@@ -131,7 +331,9 @@ namespace Spreadsheet {
 				} else if (IsDigit(c)) {
 					if (readingDigits || readingToken) {
 						++index;
-						continue;
+						if (index < text.Length) {
+							continue;
+						}
 					} else if (tokenStart < 0) {
 						tokenStart = index;
 						readingDigits = true;
@@ -143,7 +345,12 @@ namespace Spreadsheet {
 						readingToken = true;
 					} else if (readingToken) {
 						++index;
-						continue;
+						if (index < text.Length) {
+							continue;
+						}
+					} else if (tokenStart < 0){
+						tokenStart = index;
+						readingToken = true;
 					}
 				} else if (IsComma(c)) {
 					if (tokenStart < 0) {
@@ -165,7 +372,9 @@ namespace Spreadsheet {
 					} else if (!readingToken && IsDecimalPoint(c) && !readingFloat) {
 						readingFloat = true;
 						++index;
-						continue;
+						if (index < text.Length) {
+							continue;
+						}
 					} else if (IsSign(c) && !readingDigits && !readingToken) {
 						char nextChar = ((index + 1) < text.Length) ? text[index + 1] : '\0';
 						//UnityEngine.Debug.Log($"Sign {c}, next is {nextChar}");
@@ -173,7 +382,9 @@ namespace Spreadsheet {
 							tokenStart = index;
 							readingDigits = true;
 							++index;
-							continue;
+							if (index < text.Length) {
+								continue;
+							}
 						}
 					}
 					char expectedFinish = EndCap(c);
@@ -194,7 +405,9 @@ namespace Spreadsheet {
 							if (IsStringLiteralCap(expectedFinish)) {
 								readingStringLiteral = expectedFinish;
 								tokenStart = ++index;
-								continue;
+								if (index < text.Length) {
+									continue;
+								}
 							}
 						}
 					}
@@ -213,7 +426,12 @@ namespace Spreadsheet {
 						double number = double.Parse(token);
 						out_tokens.Add(number);
 					} else {
-						out_tokens.Add(token);
+						if (readingStringLiteral != '\0') {
+							StringLiteral stringLiteral = new StringLiteral(token, tokenStart);
+							out_tokens.Add(stringLiteral);
+						} else {
+							out_tokens.Add(new Token(token, tokenStart));
+						}
 					}
 					tokenStart = -1;
 					tokenEnd = -1;
@@ -311,7 +529,7 @@ namespace Spreadsheet {
 					} else if (c == 'u') {
 						if (i+4 > end) {
 							unescaped = sb.ToString();
-							return new Parse.Error($"expected 4 chars after index {i}, found {end - i}", str, 0, i);
+							return new Parse.Error($"expected 4 chars after index {i}, found {end - i}", str, i);
 						}
 						string octalDigits = str.Substring(i, 4);
 						i += 3;
