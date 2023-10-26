@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -55,6 +56,27 @@ namespace Spreadsheet {
 			public static implicit operator string(Token token) => token.ToString();
 		}
 
+		public struct TokenList : IEnumerable, IEnumerable<object>, IList<object> {
+			public List<object> list;
+			public int sourceIndex;
+			public TokenList(List<object> list, int index) { this.list = list; this.sourceIndex = index; }
+			public int Count => list.Count;
+			public bool IsReadOnly => false;
+			object IList<object>.this[int index] { get { return list[index]; } set { list[index] = value; } }
+			public object this[int i] { get { return list[i]; } set { list[i] = value; } }
+			public static implicit operator string(TokenList list) => Debug(list);
+			public IEnumerator GetEnumerator() => list.GetEnumerator();
+			IEnumerator<object> IEnumerable<object>.GetEnumerator() => list.GetEnumerator();
+			public int IndexOf(object item) => list.IndexOf(item);
+			public void Insert(int index, object item) => list.Insert(index, item);
+			public void RemoveAt(int index) => list.RemoveAt(index);
+			public void Add(object item) => list.Add(item);
+			public void Clear() => list.Clear();
+			public bool Contains(object item) => list.Contains(item);
+			public void CopyTo(object[] array, int arrayIndex) => list.CopyTo(array, arrayIndex);
+			public bool Remove(object item) => list.Remove(item);
+		}
+
 		public static Parse.Error ConvertFloatsList(object value, ref float[] result) {
 			switch (value) {
 				case float f:
@@ -75,11 +97,11 @@ namespace Spreadsheet {
 					result[2] = q.z;
 					result[3] = q.w;
 					return null;
-				case float[] floats:
+				case IList<float> floats:
 					if (result == null) {
-						result = new float[floats.Length];
+						result = new float[floats.Count];
 					}
-					int limit = Mathf.Min(result.Length, floats.Length);
+					int limit = Mathf.Min(result.Length, floats.Count);
 					for (int i = 0; i < limit; ++i) {
 						result[i] = floats[i];
 					}
@@ -87,14 +109,13 @@ namespace Spreadsheet {
 				case null:
 					return new Parse.Error($"null unacceptable");
 				case string s:
-					UnityEngine.Debug.Log($"parsing string '{s}'");
+					//UnityEngine.Debug.Log($"parsing string '{s}'");
 					Parse.Error err = ParseFloatList(s, out List<float> out_numbers);
-					if (IsError(err)) {
-						return err;
-					}
-					UnityEngine.Debug.Log($"parsed [{out_numbers.Count}] {{{string.Join(",", out_numbers)}}}");
+					//UnityEngine.Debug.Log($"parsed [{out_numbers.Count}] {{{string.Join(",", out_numbers)}}}");
 					if (result == null || result.Length != out_numbers.Count) {
-						result = out_numbers.ToArray();
+						if (out_numbers != null) {
+							result = out_numbers.ToArray();
+						}
 					} else {
 						for(int i = 0; i < out_numbers.Count; ++i) {
 							result[i] = out_numbers[i];
@@ -122,6 +143,12 @@ namespace Spreadsheet {
 		public static Parse.Error ConvertToSingle(object obj) {
 			Parse.Error err = new Error(null);
 			switch (obj) {
+				case TokenList tokList:
+					err.err = $"cannot convert TokenList({tokList.Count}) '{Debug(tokList)}' to float";
+					break;
+				case List<object> list:
+					err.err = $"cannot convert List({list.Count}) '{Debug(list)}' to float";
+					break;
 				case Token:
 					err.err = $"cannot convert Token '{obj}' to float";
 					break;
@@ -161,20 +188,29 @@ namespace Spreadsheet {
 				list = null;
 				return err;
 			}
-			UnityEngine.Debug.Log(DebugPrint(out_tokens, 0));
+			Log(DebugHierarchyWithTypes(out_tokens, 0));
+			Parse.Error conversionError = ConvertList(text, out_tokens, out list, conversion);
+			if (!IsError(err) && IsError(conversionError)) {
+				err = conversionError;
+			}
+			return err;
+		}
+
+		private static Parse.Error ConvertList<T>(string text, List<object> out_tokens, out List<T> list, Func<object, Parse.Error> conversion) {
 			list = new List<T>();
-			for(int i = 0; i < out_tokens.Count; ++i) {
+			Parse.Error err = null;
+			for (int i = 0; i < out_tokens.Count; ++i) {
+				//Log("converting '" + out_tokens[i] + "'   " + (GetTokenIndex(out_tokens[i], out int tokenIndex) ? "@" + tokenIndex : ""));
 				Parse.Error conversionError = conversion.Invoke(out_tokens[i]);
 				bool conversionHappenedCorrectly = conversionError != null && !conversionError.IsError;
 				if (conversionHappenedCorrectly) {
-					if(conversionError.metadata is T data) {
+					if (conversionError.metadata is T data) {
 						list.Add(data);
 					} else {
 						conversionHappenedCorrectly = false;
 					}
-				} else if(conversionError != null) {
+				} else if (conversionError != null) {
 					ApplyErrorLocation(conversionError, text, out_tokens[i]);
-					UnityEngine.Debug.Log($"{out_tokens[i].GetType()},  {GetTokenIndex(out_tokens[i])} \'{text}\'");
 					return conversionError;
 				}
 				if (!conversionHappenedCorrectly) {
@@ -187,43 +223,26 @@ namespace Spreadsheet {
 		}
 
 		private static void ApplyErrorLocation(Error error, string rootText, object token) {
-			int tokenIndex = GetTokenIndex(token);
-			error.index = tokenIndex;
-			Parse.GetLineLetterFromIndex(rootText, tokenIndex, out error.line, out error.letter);
+			if (GetTokenIndex(token, out int tokenIndex)) {
+				error.index = tokenIndex;
+				Parse.GetLineLetterFromIndex(rootText, tokenIndex, out error.line, out error.letter);
+			}
 		}
 
-		public static int GetTokenIndex(object obj) {
+		public static bool GetTokenIndex(object obj, out int index) {
 			switch (obj) {
-				case Token token: return token.sourceIndex;
-				case StringLiteral stringLiteral: return stringLiteral.sourceIndex;
+				case Token token:
+					index = token.sourceIndex;
+					return true;
+				case StringLiteral stringLiteral:
+					index = stringLiteral.sourceIndex;
+					return true;
+				case TokenList tokList:
+					index = tokList.sourceIndex;
+					return true;
 			}
-			return 0;
-		}
-
-		public static string DebugPrint(List<object> tokens, int indent) {
-			StringBuilder sb = new StringBuilder();
-			for (int i = 0; i < tokens.Count; ++i) {
-				if (i > 0) {
-					sb.Append("\n");
-				}
-				for(int ind = 0; ind < indent; ++ind) {
-					sb.Append("  ");
-				}
-				sb.Append(i).Append(" ");
-				if (tokens[i] == null) {
-					sb.Append("(null)");
-				}
-				switch (tokens[i]) {
-					case List<object> list:
-						sb.Append("list (").Append(list.Count).Append(")\n");
-						sb.Append(DebugPrint(list, indent + 1));
-						break;
-					default:
-						sb.Append($"({tokens[i].GetType()}) \'").Append(tokens[i].ToString()).Append("'");
-						break;
-				}
-			}
-			return sb.ToString();
+			index = 0;
+			return false;
 		}
 
 		/// <summary>
@@ -286,138 +305,189 @@ namespace Spreadsheet {
 				}
 			}
 		}
+		private static void Log(string text) {
+			UnityEngine.Debug.Log(text);
+		}
 
 		public static Parse.Error ParseList(string text, ref int index, List<object> out_tokens, Func<char, bool> isFinished) {
 			int tokenStart = -1, tokenEnd = -1;
 			bool readingDigits = false;
 			bool readingFloat = false; // found a decimal point. don't let another decimal point go!
-			bool readingToken = false;
+			bool readingOtherToken = false;
+			bool IsReadingToken() => tokenStart >= 0;
+			bool IsFinishedReadingToken() => tokenEnd >= 0;
+			int TokenLength() => tokenEnd - tokenStart;
+			string CurrentToken() => text.Substring(tokenStart, TokenLength());
 			char readingStringLiteral = '\0';
+			bool IsReadingStringLiteral() => readingStringLiteral != '\0';
 			List<char> parenthesisNesting = new List<char>();
 			int loopguard = 0;
 			int startedParse = index;
 			bool finishedEarly = false;
+			bool finishedLastTokenElementWithComma = false;
 			while (index < text.Length && !finishedEarly) {
 				if (loopguard++ > 1000) {
 					throw new Exception("loop broken! "+index+" @ "+text.Substring(0, index)+"|"+text.Substring(index));
 				}
 				char c = text[index];
-				if (readingStringLiteral != '\0') {
+				//Log($"{c}@{index} d{readingDigits} f{readingFloat} t{readingOtherToken} s{readingStringLiteral != '\0'}");
+				if (IsReadingStringLiteral()) {
 					if (c == '\\') {
 						++index;
 						if (index >= text.Length) {
-							return new Parse.Error($"escape sequence missing next letter @ {index-1}", text, index);
+							return new Parse.Error($"escape sequence missing next letter", text, index-1);
 						}
 					} else if(c == readingStringLiteral) {
 						tokenEnd = index;
-						//UnityEngine.Debug.Log($"\"token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
+						//Log($"\"token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 						Parse.Error err = Unescape(text, out string resultToken, tokenStart, tokenEnd);
 						out_tokens.Add(resultToken);
 						return err;
 					}
 					++index;
 					if (index > text.Length) {
-						return new Parse.Error($"missing {readingStringLiteral} for unfinished string literal @ {tokenStart}", text, tokenStart);
+						return new Parse.Error($"missing {readingStringLiteral} for unfinished string literal", text, tokenStart);
 					}
+					//Log($"continue literal {index} < {text.Length}");
 					continue;
 				} else if (IsWhiteSpace(c)) {
-					if (tokenStart >= 0) {
+					if (IsReadingToken()) {
 						tokenEnd = index;
-						//UnityEngine.Debug.Log($"   token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
+						//Log($"   token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 					} else {
 						++index;
-						continue;
-					}
-				} else if (IsDigit(c)) {
-					if (readingDigits || readingToken) {
-						++index;
 						if (index < text.Length) {
+							//Log($"continue whitespace {index} ({c}) < {text.Length}");
 							continue;
 						}
-					} else if (tokenStart < 0) {
+					}
+				} else if (IsDigit(c)) {
+					if (readingDigits || readingOtherToken) {
+						++index;
+						if (index < text.Length) {
+							//Log($"continue digit {index} < {text.Length}");
+							continue;
+						}
+					} else if (!IsReadingToken()) {
 						tokenStart = index;
 						readingDigits = true;
 					}
 				} else if (IsLetter(c)) {
 					if (readingDigits) {
 						tokenEnd = index;
-						//UnityEngine.Debug.Log($"num->char token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
-						readingToken = true;
-					} else if (readingToken) {
+						//Log($"num->char token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+						readingOtherToken = true;
+					} else if (readingOtherToken) {
 						++index;
 						if (index < text.Length) {
+							//Log($"continue token {index} < {text.Length}");
 							continue;
+						} else {
+							//Log("token finished?");
 						}
-					} else if (tokenStart < 0){
+					} else if (!IsReadingToken()) {
 						tokenStart = index;
-						readingToken = true;
+						readingOtherToken = true;
+						//Log("token started");
 					}
 				} else if (IsComma(c)) {
-					if (tokenStart < 0) {
+					bool emptyCommaNeedsEmptyToken = !IsReadingToken() && finishedLastTokenElementWithComma;
+					if (emptyCommaNeedsEmptyToken) {
 						tokenStart = index;
 					}
-					tokenEnd = index;
-					//UnityEngine.Debug.Log($", token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
-					++index;
+					if (IsReadingToken()) {
+						tokenEnd = index;
+						++index;
+					} else {
+						finishedLastTokenElementWithComma = true;
+					}
+					//string tokenBeforeComma = IsReadingToken() ? $"\"{CurrentToken()}\"" : "none";
+					//Log($", token {tokenStart}:{tokenEnd} {tokenBeforeComma}");
 				} else {
 					int last = parenthesisNesting.Count - 1;
 					char currentEnclosureFinish = last >= 0 ? parenthesisNesting[last] : '\0';
+					//Log($"enclosure? {c} vs {currentEnclosureFinish}");
 					if (currentEnclosureFinish == c) {
+						//Log("found end!");
 						parenthesisNesting.RemoveAt(last);
-						tokenEnd = index;
+						if (IsReadingToken()) {
+							tokenEnd = index;
+						//	Log($"{c} token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+						//} else {
+						//	Log($"finished multi-token enclosure {c} {index} / {text.Length}");
+						}
 						if (parenthesisNesting.Count == 0 && isFinished != null && isFinished.Invoke(c)) {
-							//UnityEngine.Debug.Log($"{c} token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
 							finishedEarly = true;
 						}
-					} else if (!readingToken && IsDecimalPoint(c) && !readingFloat) {
-						readingFloat = true;
+					} else if (!readingOtherToken && IsDecimalPoint(c)) {
+						if (!readingFloat) {
+							readingFloat = true;
+						} else {
+							return new Parse.Error("floating point with multple decimals not allowed", text, index);
+						}
 						++index;
 						if (index < text.Length) {
+							//Log($"continue float {index} < {text.Length}");
 							continue;
 						}
-					} else if (IsSign(c) && !readingDigits && !readingToken) {
+					} else if (IsSign(c) && !readingDigits && !readingOtherToken) {
 						char nextChar = ((index + 1) < text.Length) ? text[index + 1] : '\0';
 						//UnityEngine.Debug.Log($"Sign {c}, next is {nextChar}");
-						if (IsDigit(nextChar) || (readingFloat = IsDecimalPoint(nextChar))) {
+						if (IsDigit(nextChar) || IsDecimalPoint(nextChar)) {
 							tokenStart = index;
 							readingDigits = true;
 							++index;
 							if (index < text.Length) {
+								//Log($"continue signed digit {index} < {text.Length}");
 								continue;
 							}
 						}
 					}
 					char expectedFinish = EndCap(c);
 					if (expectedFinish != '\0') {
+						//Log($"enclosure {c} expects finish with {expectedFinish}");
 						parenthesisNesting.Add(expectedFinish);
 						if (startedParse != index) {
 							List<object> tokens = new List<object>();
+							int startedNewListAt = index;
 							Parse.Error error = ParseList(text, ref index, tokens, c => c == expectedFinish);
-							c = text[index];
-							object whatToAdd = IsStringLiteralCap(expectedFinish) ? tokens[0] : tokens;
+							if (IsError(error)) {
+								return error;
+							}
+							//Log($"new list started@{startedParse}, ended@{index} / {text.Length}    \"{text}\"");
+							c = index < text.Length ? text[index] : '\0';
+							object whatToAdd = IsStringLiteralCap(expectedFinish) ? tokens[0] :
+								new TokenList(tokens, startedNewListAt);
 							out_tokens.Add(whatToAdd);
 							if (c != expectedFinish) {
-								throw new Exception($"expected {expectedFinish} @ {index}, found {c}");
+								string whatIsHere = c != '\0' ? c.ToString() : "EndOfText";
+								string errorMessage = $"expected '{expectedFinish}', found '{whatIsHere}'";
+								return new Parse.Error(errorMessage, text, index);
 							}
 							parenthesisNesting.RemoveAt(parenthesisNesting.Count-1);
-							++index;
+							//++index;
 						} else {
 							if (IsStringLiteralCap(expectedFinish)) {
 								readingStringLiteral = expectedFinish;
 								tokenStart = ++index;
 								if (index < text.Length) {
+									//Log($"literal started {index} < {text.Length}");
 									continue;
 								}
 							}
 						}
 					}
 				}
-				if(tokenStart >= 0 && tokenEnd < 0 && index >= text.Length) {
+				if(IsReadingToken() && !IsFinishedReadingToken() && index >= text.Length-1) {
 					tokenEnd = text.Length;
-					//UnityEngine.Debug.Log($"EOF token {tokenStart}:{tokenEnd}\"{text.Substring(tokenStart, tokenEnd - tokenStart)}\"");
+					finishedEarly = true;
+					//UnityEngine.Debug.Log($"EOF token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 				}
-				if (tokenEnd >= 0) {
-					string token = text.Substring(tokenStart, tokenEnd - tokenStart);
+				if (IsFinishedReadingToken()) {
+					if (!IsReadingToken()) {
+						throw new Exception($"token ended before it began? {index}/{text.Length}");
+					}
+					string token = CurrentToken();
 					if (readingDigits) {
 						//UnityEngine.Debug.Log($"double parse '{token}'<-------------");
 						//string hey = "";
@@ -426,7 +496,7 @@ namespace Spreadsheet {
 						double number = double.Parse(token);
 						out_tokens.Add(number);
 					} else {
-						if (readingStringLiteral != '\0') {
+						if (IsReadingStringLiteral()) {
 							StringLiteral stringLiteral = new StringLiteral(token, tokenStart);
 							out_tokens.Add(stringLiteral);
 						} else {
@@ -437,11 +507,18 @@ namespace Spreadsheet {
 					tokenEnd = -1;
 					readingDigits = false;
 					readingFloat = false;
-					readingToken = false;
+					readingOtherToken = false;
 					readingStringLiteral = '\0';
+					finishedLastTokenElementWithComma = IsComma(c);
+					//if (finishedLastTokenElementWithComma) {
+					//	Log(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
+					//}
+					//Log($"finished token ({token}) {index} < {text.Length}");
 					continue;
 				}
-				++index;
+				if (!finishedEarly) {
+					++index;
+				}
 			}
 			//UnityEngine.Debug.Log($"###### token count: {out_tokens.Count}   {index} < {text.Length}");
 			return null;
@@ -456,7 +533,7 @@ namespace Spreadsheet {
 				case string str:
 					sb.Append("\"").Append(Escape(str)).Append("\"");
 					break;
-				case System.Collections.IEnumerable enumerable:
+				case IEnumerable enumerable:
 					sb.Append("[");
 					int count = 0;
 					foreach (object item in enumerable) {
@@ -472,6 +549,38 @@ namespace Spreadsheet {
 			}
 			return sb.ToString();
 		}
+
+
+		public static string DebugHierarchyWithTypes(IList<object> tokens, int indent) {
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < tokens.Count; ++i) {
+				if (i > 0) {
+					sb.Append("\n");
+				}
+				for (int ind = 0; ind < indent; ++ind) {
+					sb.Append("  ");
+				}
+				sb.Append(i);
+				if (GetTokenIndex(tokens[i], out int index)) {
+					sb.Append("@").Append(index);
+				}
+				sb.Append(" ");
+				if (tokens[i] == null) {
+					sb.Append("(null)");
+				}
+				switch (tokens[i]) {
+					case IList<object> list:
+						sb.Append("list (").Append(list.Count).Append(")\n");
+						sb.Append(DebugHierarchyWithTypes(list, indent + 1));
+						break;
+					default:
+						sb.Append($"({tokens[i].GetType()}) \'").Append(tokens[i].ToString()).Append("'");
+						break;
+				}
+			}
+			return sb.ToString();
+		}
+
 		public static bool IsWhiteSpace(char c) => c switch { ' ' => true, '\t' => true, '\n' => true, '\b' => true, _ => false };
 		public static bool IsDigit(char c) => c >= '0' && c <= '9';
 		public static bool IsDigitOctal(char c) => c >= '0' && c <= '7';
@@ -481,7 +590,7 @@ namespace Spreadsheet {
 		public static bool IsComma(char c) => c switch { ',' => true, _ => false };
 		public static bool IsLetter(char c) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 		public static bool IsStringLiteralCap(char c) => c switch { '\'' => true, '\"' => true, _ => false };
-		public static char EndCap(char c) => c switch { '[' => ']', '(' => ')', '{' => '}', '<' => '>', '\'' => '\'', '\"' => '\"', _ => '\0' };
+		public static char EndCap(char c) => c switch { '[' => ']', '(' => ')', '{' => '}', '\'' => '\'', '\"' => '\"', _ => '\0' };
 		public static char LiteralUnescape(char c) => c switch { 'a' => '\a', 'b' => '\b', 'n' => '\n', 'r' => '\r', 'f' => '\f', 't' => '\t', 'v' => '\v', _ => c };
 		public static string LiteralEscape(char c) => c switch { '\a' => "\\a", '\b' => "\\b", '\n' => "\\n", '\r' => "\\r", '\f' => "\\f", '\t' => "\\t", '\v' => "\\v", _ => null };
 		public static string Escape(string str) {
