@@ -73,6 +73,9 @@ namespace Spreadsheet {
 			Transform t = Ui.TransformFrom(obj);
 			float[] floats = new float[3];
 			Parse.Error err = Parse.ConvertFloatsList(positionObj, ref floats);
+			if (Parse.IsError(err)) {
+				return err;
+			}
 			Vector3 newPosition = new Vector3(floats[0], floats[1], floats[2]);
 			//Debug.Log($"{t.name} position: {t.localPosition} -> {newPosition}");
 			t.localPosition = newPosition;

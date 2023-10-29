@@ -250,6 +250,9 @@ namespace Spreadsheet {
 				}
 				cellUiRow[cellPosition.Column] = cell;
 			} else if (cellPosition.IsEntireColumn) {
+				if (cellPosition.Column < 0 || cellPosition.Column >= columns.Count) {
+					Debug.LogError($"bad cell position {cellPosition}");
+				}
 				if (cell != null && columns[cellPosition.Column].headerCell != null) {
 					if (_beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast) {
 						Debug.LogError($"set column header @ {cellPosition.Column}, one already here!");
