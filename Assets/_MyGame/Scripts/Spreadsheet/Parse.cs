@@ -77,6 +77,38 @@ namespace Spreadsheet {
 			public bool Remove(object item) => list.Remove(item);
 		}
 
+		public static Parse.Error ParseVector3(object positionObj, out Vector3 v3) {
+			float[] floats = null;
+			switch (positionObj) {
+				case Vector3 v: v3 = v; return null;
+				case float[] f: floats = f; break;
+			}
+			Parse.Error err = null;
+			if (floats == null) {
+				floats = new float[3];
+				err = Parse.ConvertFloatsList(positionObj, ref floats);
+				if (Parse.IsError(err)) {
+					v3 = Vector3.zero;
+					return err;
+				}
+			}
+			int floatCount = floats != null ? floats.Length : 0;
+			if (floatCount < 3 && (err == null || !err.IsError)) {
+				string errorMessage = $"Expected 3 values, found {floatCount}";
+				if (err == null) {
+					err = new Parse.Error(errorMessage);
+				} else {
+					err.err = errorMessage;
+				}
+			}
+			float x = GetNum(floats, 0, 0);
+			float y = GetNum(floats, 1, 0);
+			float z = GetNum(floats, 2, 0);
+			v3 = new Vector3(x, y, z);
+			return err;
+			float GetNum(float[] list, int i, float v) => list.Length > i ? list[i] : v;
+		}
+
 		public static Parse.Error ConvertFloatsList(object value, ref float[] result) {
 			switch (value) {
 				case float f:
@@ -188,7 +220,7 @@ namespace Spreadsheet {
 				list = null;
 				return err;
 			}
-			Log(DebugHierarchyWithTypes(out_tokens, 0));
+			//Log(DebugHierarchyWithTypes(out_tokens, 0));
 			Parse.Error conversionError = ConvertList(text, out_tokens, out list, conversion);
 			if (!IsError(err) && IsError(conversionError)) {
 				err = conversionError;

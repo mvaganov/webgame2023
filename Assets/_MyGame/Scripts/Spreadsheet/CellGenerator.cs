@@ -11,6 +11,9 @@ namespace Spreadsheet {
 		private Transform _transform;
 		public List<CellType> cellTypes = new List<CellType>();
 		private static List<List<Cell>> s_preallocatedCellsByType = new List<List<Cell>>();
+		private int _popupUiIndex;
+
+		public int PopupUiTypeIndex => _popupUiIndex;
 
 		private void Awake() {
 			_transform = transform;
@@ -18,8 +21,12 @@ namespace Spreadsheet {
 		}
 
 		public void SetupCellTypes() {
+			_popupUiIndex = 0;
 			for (int i = 0; i < cellTypes.Count; i++) {
 				cellTypes[i].prefab.gameObject.SetActive(false);
+				if (cellTypes[i].name.ToLower() == "popup") {
+					_popupUiIndex = i;
+				}
 			}
 		}
 

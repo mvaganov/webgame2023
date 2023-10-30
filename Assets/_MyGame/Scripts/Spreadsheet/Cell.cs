@@ -31,7 +31,7 @@ namespace Spreadsheet {
 			set {
 				if (_selected != value && position.IsNormalPosition) {
 					if (value) {
-						SetColor(spreadsheet.multiSelectColor);
+						SetColor(spreadsheet.MultiselectColor);
 					} else {
 						SetColor(_normalColor);
 					}
@@ -50,7 +50,9 @@ namespace Spreadsheet {
 
 		private void Awake() {
 			_selectable = GetComponent<Selectable>();
-			_normalColor = _selectable.colors.normalColor;
+			if (_selectable != null) {
+				_normalColor = _selectable.colors.normalColor;
+			}
 		}
 
 		public static void Set(GameObject gameObject, Spreadsheet speradsheet, CellPosition cellPosition) {
@@ -84,10 +86,11 @@ namespace Spreadsheet {
 
 		private void SetString(string str) {
 			Parse.Error err = setCellData(str);
-			if (err != null && err.IsError) {
+			if (err != null) {
 				string errStr = err.ToString();
 				Debug.LogError(errStr + "\n" + err.line+":"+err.letter+"  idx"+err.index);
 				spreadsheet.SetPopup(this, errStr);
+				SetColor(spreadsheet.ErrorCellColor);
 			} else {
 				RefreshRestOfRow();
 			}

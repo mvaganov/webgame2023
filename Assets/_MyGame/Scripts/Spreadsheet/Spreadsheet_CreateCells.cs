@@ -77,6 +77,9 @@ namespace Spreadsheet {
 				if (_lastRendered.Contains(cpos)) { remove.Add(cpos); }
 				if (visibleRange.Contains(cpos)) { add.Add(cpos); }
 			});
+			if (_popupUiElement != null) {
+				_popupUiElement.SetSiblingIndex(_popupUiElement.transform.parent.childCount - 1);
+			}
 		}
 
 		private bool MissingVisibleCells(CellRange visibleRange, List<CellPosition> missing) {
@@ -268,6 +271,9 @@ namespace Spreadsheet {
 					cellToFree = rows[cellPosition.Row].headerCell;
 				}
 				rows[cellPosition.Row].headerCell = cell;
+			} else if (cellPosition.IsInvalid) {
+				//Debug.LogWarning("adding non conforming cell");
+				_nonConformingCells.Add(cell);
 			}
 			if (cellToFree != null) {
 				if (cellToFree == cell) {

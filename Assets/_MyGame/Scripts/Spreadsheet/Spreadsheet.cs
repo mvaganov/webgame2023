@@ -8,13 +8,19 @@ namespace Spreadsheet {
 		public ScrollRect ScrollView;
 		public CellGenerator cellGenerator;
 		public Vector2 defaultCellSize = new Vector2(100, 30);
-		public Color multiSelectColor;
+		[SerializeField] private Color _multiSelectColor = new Color(7f / 8, 1, 7f / 8);
+		[SerializeField] private Color _errorCellColor = new Color(1, 7f/8, 7f / 8);
+		[SerializeField] private Color _tooltipColor = new Color(1, 1, 7f / 8);
 		private PointerEventData _fakePointerEventData;
-		private int _popupUiIndex;
 		private RectTransform _popupUiElement;
 		private RectTransform _transform;
 		public List<Column> columns = new List<Column>();
 		public List<Row> rows = new List<Row>();
+		public List<Cell> _nonConformingCells = new List<Cell>();
+
+		public Color MultiselectColor => _multiSelectColor;
+
+		public Color ErrorCellColor => _errorCellColor;
 
 		public RectTransform ContentArea => ScrollView.content;
 
@@ -111,7 +117,7 @@ namespace Spreadsheet {
 
 		public void SetPopup(Cell cell, string text) {
 			if (_popupUiElement == null) {
-				Cell popup = cellGenerator.MakeNewCell(_popupUiIndex).Set(this, CellPosition.Invalid);
+				Cell popup = cellGenerator.MakeNewCell(cellGenerator.PopupUiTypeIndex).Set(this, CellPosition.Invalid);
 				_popupUiElement = popup.RectTransform;
 			} else {
 				_popupUiElement.SetAsLastSibling();
@@ -119,9 +125,10 @@ namespace Spreadsheet {
 			RectTransform cellRectTransform = cell.GetComponent<RectTransform>();
 			RectTransform popupRectTransform = _popupUiElement.GetComponent<RectTransform>();
 			Ui.SetText(_popupUiElement, text);
-			Vector3[] corners = new Vector3[4];
-			cellRectTransform.GetLocalCorners(corners);
-			popupRectTransform.anchoredPosition = corners[0];
+			Ui.SetColor(_popupUiElement, _tooltipColor);
+			popupRectTransform.SetParent(ContentArea);
+			popupRectTransform.anchoredPosition = cellRectTransform.anchoredPosition
+				+ new Vector2(0, -cellRectTransform.sizeDelta.y);
 			_popupUiElement.gameObject.SetActive(true);
 		}
 	}

@@ -25,16 +25,83 @@ namespace Spreadsheet {
 		}
 
 		public static void SetText(Object rect, string text) {
+			RectTransform shouldRefreshTextArea = null;
 			switch (rect) {
 				case null: break;
 				case GameObject go: SetText(go.GetComponent<RectTransform>(), text); break;
 				case RectTransform rt: SetText(GetTextObject(rt), text); break;
-				case InputField inf: inf.text = text; break;
-				case Text txt: txt.text = text; break;
-				case TMPro.TMP_InputField tmpinf: tmpinf.text = text; break;
-				case TMPro.TMP_Text tmptxt: tmptxt.text = text; break;
+				case InputField inf: inf.text = text; shouldRefreshTextArea = inf.GetComponent<RectTransform>(); break;
+				case Text txt: txt.text = text; shouldRefreshTextArea = txt.GetComponent<RectTransform>(); break;
+				case TMPro.TMP_InputField tmpinf: tmpinf.text = text; shouldRefreshTextArea = tmpinf.GetComponent<RectTransform>(); break;
+				case TMPro.TMP_Text tmptxt: tmptxt.text = text; shouldRefreshTextArea = tmptxt.GetComponent<RectTransform>(); break;
 				case MonoBehaviour mb: SetText(mb.GetComponent<RectTransform>(), text); break;
 			}
+			if (shouldRefreshTextArea != null) {
+				LayoutRebuilder.ForceRebuildLayoutImmediate(shouldRefreshTextArea);
+			}
+		}
+
+		public static void SetColor(Object obj, Color color) {
+			Object colorObject = GetColorObject(obj);
+			switch (colorObject) {
+				case null: break;
+				case Image img: img.color = color; break;
+				case Text txt: txt.color = color; break;
+				case TMPro.TMP_Text tmptxt: tmptxt.color = color; break;
+				case InputField inf: {
+						ColorBlock cb = inf.colors;
+						cb.normalColor = color;
+						inf.colors = cb;
+					}
+					break;
+				case TMPro.TMP_InputField tinf: {
+						ColorBlock cb = tinf.colors;
+						cb.normalColor = color;
+						tinf.colors = cb;
+					}
+					break;
+				case Renderer r: r.material.color = color; break;
+				case Material m: m.color = color; break;
+			}
+		}
+
+		public static bool TryGetColor(Object obj, out Color color) {
+			Object colorObject = GetColorObject(obj);
+			switch (colorObject) {
+				case Image img: color = img.color; return true;
+				case Text txt: color = txt.color; return true;
+				case TMPro.TMP_Text tmptxt: color = tmptxt.color; return true;
+				case InputField inf: color = inf.colors.normalColor; return true;
+				case TMPro.TMP_InputField tinf: color = tinf.colors.normalColor; return true;
+				case Renderer r: color = r.material.color; return true;
+				case Material m: color = m.color; return true;
+			}
+			color = Color.clear;
+			return false;
+		}
+
+		public static Object GetColorObject(Object obj) {
+			switch (obj) {
+				case Image i: return i;
+				case Renderer r: return r;
+				case Material m: return m;
+				case GameObject go:
+					Image img = go.GetComponent<Image>();
+					if (img != null) { return img; }
+					RectTransform rt = go.GetComponent<RectTransform>();
+					if (rt != null) {
+						Object textUi = GetTextObject(rt);
+						if (textUi != null) {
+							return textUi;
+						}
+					}
+					Renderer rend = go.GetComponent<Renderer>();
+					if (rend != null) { return rend; }
+					return null;
+				case Transform t: return GetColorObject(t.gameObject);
+				case MonoBehaviour mb: return GetColorObject(mb.gameObject);
+			}
+			return null;
 		}
 
 		public static Transform TransformFrom(object o) {
@@ -62,22 +129,16 @@ namespace Spreadsheet {
 		public static Parse.Error SetName(object obj, object nameObj) {
 			string name = nameObj.ToString();
 			switch (obj) {
-				case Object o: o.name = name; return null;
+				case UnityEngine.Object o: o.name = name; return null;
 			}
 			string errorMessage = $"Could not set {obj}.name = \"{nameObj}\"";
-			Debug.LogError(errorMessage);
+			Debug.Log(errorMessage);
 			return new Parse.Error(errorMessage);
 		}
 
 		public static Parse.Error SetPosition(object obj, object positionObj) {
 			Transform t = Ui.TransformFrom(obj);
-			float[] floats = new float[3];
-			Parse.Error err = Parse.ConvertFloatsList(positionObj, ref floats);
-			if (Parse.IsError(err)) {
-				return err;
-			}
-			Vector3 newPosition = new Vector3(floats[0], floats[1], floats[2]);
-			//Debug.Log($"{t.name} position: {t.localPosition} -> {newPosition}");
+			Parse.Error err = Parse.ParseVector3(positionObj, out Vector3 newPosition);
 			t.localPosition = newPosition;
 			return err;
 		}

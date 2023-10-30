@@ -8,9 +8,10 @@ namespace Spreadsheet {
 		public int Row, Column;
 		public static CellPosition Invalid = new CellPosition(-1, -1);
 		public static CellPosition Zero = new CellPosition(0, 0);
-		public bool IsEntireRow { get => Column < 0; set => Column = (value != IsEntireRow) ? ~Column : Column; }
-		public bool IsEntireColumn { get => Row < 0; set => Row = (value != IsEntireColumn) ? ~Row : Row; }
+		public bool IsEntireRow { get => Column < 0 && Row >= 0; set => Column = (value != IsEntireRow) ? ~Column : Column; }
+		public bool IsEntireColumn { get => Row < 0 && Column >= 0; set => Row = (value != IsEntireColumn) ? ~Row : Row; }
 		public bool IsNormalPosition { get => Column >= 0 && Row >= 0; }
+		public bool IsInvalid { get => Column < 0 && Row < 0; }
 		public CellPosition(int row, int column) { Row = row; Column = column; }
 		public bool Equals(CellPosition other) => Row == other.Row && Column == other.Column;
 		public static bool operator ==(CellPosition left, CellPosition right) => left.Equals(right);
