@@ -8,6 +8,9 @@ namespace MyGame {
 		public float borderSize = 4;
 		public Region region;
 		private Vector3[] worldCorners = new Vector3[4];
+		[SerializeField] private bool _dragCornersToResize = true;
+
+		public void ToggleCornerDragToResize() => _dragCornersToResize = !_dragCornersToResize;
 
 		[Flags]
 		public enum Region {
@@ -34,14 +37,15 @@ namespace MyGame {
 					Vector3 position = rectTransform.position;
 
 					bool xChange = false;
-					if (region.HasFlag(Region.Left)) { sizeDelta.x -= dragDelta.x; xChange = true; }
-					if (region.HasFlag(Region.Right)) { sizeDelta.x += dragDelta.x; xChange = true; }
-					if (xChange) { position += new Vector3(dragDelta.x * rectTransform.pivot.x, 0); }
+					float pivot = 0;
+					if (region.HasFlag(Region.Left)) { sizeDelta.x -= dragDelta.x; xChange = true; pivot = 1 - rectTransform.pivot.x; }
+					if (region.HasFlag(Region.Right)) { sizeDelta.x += dragDelta.x; xChange = true; pivot = rectTransform.pivot.x; }
+					if (xChange) { position += new Vector3(dragDelta.x * pivot, 0); }
 
 					bool yChange = false;
-					if (region.HasFlag(Region.Top)) { sizeDelta.y += dragDelta.y; yChange = true; }
-					if (region.HasFlag(Region.Bottom)) { sizeDelta.y -= dragDelta.y; yChange = true; }
-					if (yChange) { position += new Vector3(0, dragDelta.y * rectTransform.pivot.y); }
+					if (region.HasFlag(Region.Top)) { sizeDelta.y += dragDelta.y; yChange = true; pivot = rectTransform.pivot.y; }
+					if (region.HasFlag(Region.Bottom)) { sizeDelta.y -= dragDelta.y; yChange = true; pivot = 1 - rectTransform.pivot.y; }
+					if (yChange) { position += new Vector3(0, dragDelta.y * pivot); }
 
 					rectTransform.position = position;
 					rectTransform.sizeDelta = sizeDelta;
@@ -65,7 +69,11 @@ namespace MyGame {
 
 		public void PointerDown(BaseEventData baseEventData) {
 			PointerEventData pointerEvent = baseEventData as PointerEventData;
-			region = GetRegion(pointerEvent.position);
+			if (_dragCornersToResize) {
+				region = GetRegion(pointerEvent.position);
+			} else {
+				region = Region.Center;
+			}
 		}
 
 		public void PointerUp() {
