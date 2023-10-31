@@ -51,7 +51,6 @@ namespace Spreadsheet {
 			if (cells == null) {
 				return;
 			}
-			Debug.Log("CLEATING CELL LOOKUPTABLE!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			for (int i = 0; i < cells.Length; ++i) {
 				cells[i] = null;
 			}

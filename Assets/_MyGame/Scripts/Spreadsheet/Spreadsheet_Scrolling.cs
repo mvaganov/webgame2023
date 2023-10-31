@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace Spreadsheet {
 	public partial class Spreadsheet {
-		[ContextMenuItem(nameof(GenerateColumnHeaders), nameof(GenerateColumnHeaders))]
+		[ContextMenuItem(nameof(InitializeColumnHeaders), nameof(InitializeColumnHeaders))]
 		public RectTransform ColumnHeadersArea;
-		[ContextMenuItem(nameof(GenerateRowHeaders), nameof(GenerateRowHeaders))]
+		[ContextMenuItem(nameof(InitializeRowHeaders), nameof(InitializeRowHeaders))]
 		public RectTransform RowHeadersArea;
 
 		public void AdjustColumnHeaders(Vector2 scroll) {

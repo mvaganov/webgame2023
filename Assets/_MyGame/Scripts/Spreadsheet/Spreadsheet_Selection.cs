@@ -15,7 +15,9 @@ namespace Spreadsheet {
 			_selecting = true;
 			cell.Selected = true;
 			selectedCell = cell;
-			cell.SelectableComponent.OnSelect(null);
+			if (cell != null && cell.SelectableComponent != null) {
+				cell.SelectableComponent.OnSelect(null);
+			}
 			currentCellSelection = new CellRange(cell.position);
 			UpdateSelection();
 		}

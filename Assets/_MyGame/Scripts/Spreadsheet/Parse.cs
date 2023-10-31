@@ -367,9 +367,9 @@ namespace Spreadsheet {
 					if (c == '\\') {
 						++index;
 						if (index >= text.Length) {
-							return new Parse.Error($"escape sequence missing next letter", text, index-1);
+							return new Parse.Error($"escape sequence missing next letter", text, index - 1);
 						}
-					} else if(c == readingStringLiteral) {
+					} else if (c == readingStringLiteral) {
 						tokenEnd = index;
 						//Log($"\"token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 						Parse.Error err = Unescape(text, out string resultToken, tokenStart, tokenEnd);
@@ -443,10 +443,11 @@ namespace Spreadsheet {
 						//Log("found end!");
 						parenthesisNesting.RemoveAt(last);
 						if (IsReadingToken()) {
+							//Log("finished at EXPECTED enclosure token");
 							tokenEnd = index;
-						//	Log($"{c} token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
-						//} else {
-						//	Log($"finished multi-token enclosure {c} {index} / {text.Length}");
+							//	Log($"{c} token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+							//} else {
+							//	Log($"finished multi-token enclosure {c} {index} / {text.Length}");
 						}
 						if (parenthesisNesting.Count == 0 && isFinished != null && isFinished.Invoke(c)) {
 							finishedEarly = true;
@@ -478,6 +479,7 @@ namespace Spreadsheet {
 					char expectedFinish = EndCap(c);
 					if (expectedFinish != '\0') {
 						if (IsReadingToken()) {
+							//Log("finished at unexpected enclosure token");
 							tokenEnd = index;
 						}
 						//Log($"enclosure {c} expects finish with {expectedFinish}");
@@ -499,7 +501,7 @@ namespace Spreadsheet {
 								string errorMessage = $"expected '{expectedFinish}', found '{whatIsHere}'";
 								return new Parse.Error(errorMessage, text, index);
 							}
-							parenthesisNesting.RemoveAt(parenthesisNesting.Count-1);
+							parenthesisNesting.RemoveAt(parenthesisNesting.Count - 1);
 							//++index;
 						} else {
 							if (IsStringLiteralCap(expectedFinish)) {
@@ -512,11 +514,15 @@ namespace Spreadsheet {
 							}
 						}
 					}
+					char unexpectedFinish = BeginCap(c);
+					if (unexpectedFinish != '\0') {
+						return new Parse.Error($"unexpected end of enclosure '{unexpectedFinish}'", text, index);
+					}
 				}
 				if(IsReadingToken() && !IsFinishedReadingToken() && index >= text.Length-1) {
 					tokenEnd = text.Length;
 					finishedEarly = true;
-					//UnityEngine.Debug.Log($"EOF token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+					//Log($"EOF token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 				}
 				if (IsFinishedReadingToken()) {
 					if (!IsReadingToken()) {
@@ -525,8 +531,11 @@ namespace Spreadsheet {
 					string token = CurrentToken();
 					if (readingDigits) {
 						//Log($"double parse '{token}'<-------------");
-						//string hey = ""; for (int i = 0; i < token.Length; ++i) { hey += "[" + ((int)token[i]) + "]"; }
+						//string hey = ""; for (int i = 0; i < token.Length; ++i) {
+						//	char ch = token[i] != '\0' ? token[i] : ' '; hey += $"[{(int)token[i]} {ch}]";
+						//}
 						//Log(hey);
+
 						double number = double.Parse(token);
 						out_tokens.Add(number);
 					} else {
@@ -625,6 +634,7 @@ namespace Spreadsheet {
 		public static bool IsLetter(char c) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 		public static bool IsStringLiteralCap(char c) => c switch { '\'' => true, '\"' => true, _ => false };
 		public static char EndCap(char c) => c switch { '[' => ']', '(' => ')', '{' => '}', '\'' => '\'', '\"' => '\"', _ => '\0' };
+		public static char BeginCap(char c) => c switch { ']' => '[', ')' => '(', '}' => '{', '\'' => '\'', '\"' => '\"', _ => '\0' };
 		public static char LiteralUnescape(char c) => c switch { 'a' => '\a', 'b' => '\b', 'n' => '\n', 'r' => '\r', 'f' => '\f', 't' => '\t', 'v' => '\v', _ => c };
 		public static string LiteralEscape(char c) => c switch { '\a' => "\\a", '\b' => "\\b", '\n' => "\\n", '\r' => "\\r", '\f' => "\\f", '\t' => "\\t", '\v' => "\\v", _ => null };
 		public static string Escape(string str) {

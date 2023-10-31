@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace MyGame {
 	public class TransformSpreadsheet : Spreadsheet.Spreadsheet {
-		[ContextMenuItem(nameof(InitializeRows), nameof(InitializeRows))]
+		[ContextMenuItem(nameof(InitializeData), nameof(InitializeData))]
 		[ContextMenuItem(nameof(RefreshCells), nameof(RefreshCells))]
 		public List<Object> _objects = new List<Object>();
 		private System.Array internalArray;
@@ -35,7 +35,7 @@ namespace MyGame {
 			return new Parse.Error("No parent");
 		}
 
-		public override void InitializeRows() {
+		public override void InitializeData() {
 			columns.Clear();
 			columns.AddRange(new Column[] {
 				new Column{ label = "Name", width = 100, GetData = Ui.GetName, SetData = Ui.SetName },
@@ -43,7 +43,7 @@ namespace MyGame {
 				new Column{ label = "Rotation", width = 100, GetData = Ui.GetRotation, SetData = Ui.SetRotation },
 				new Column{ label = "Parent", width = 100, GetData = GetParentName, SetData = SetParentName },
 			});
-			base.InitializeRows();
+			base.InitializeData();
 		}
 	}
 }

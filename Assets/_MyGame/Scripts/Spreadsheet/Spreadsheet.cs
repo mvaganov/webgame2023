@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -12,7 +13,6 @@ namespace Spreadsheet {
 		[SerializeField] private Color _errorCellColor = new Color(1, 7f/8, 7f / 8);
 		[SerializeField] private Color _tooltipColor = new Color(1, 1, 7f / 8);
 		private PointerEventData _fakePointerEventData;
-		private RectTransform _popupUiElement;
 		private RectTransform _transform;
 		public List<Column> columns = new List<Column>();
 		public List<Row> rows = new List<Row>();
@@ -36,10 +36,15 @@ namespace Spreadsheet {
 		}
 
 		protected virtual void Start() {
-			InitializeRows();
-			GenerateColumnHeaders();
-			GenerateRowHeaders();
-			GenerateCells();
+			InitializeData();
+			InitializeColumnHeaders();
+			InitializeRowHeaders();
+			//GenerateCells();
+			StartCoroutine(RefreshVisibleCellsAfterUiCalculates());
+			IEnumerator RefreshVisibleCellsAfterUiCalculates() {
+				yield return null;
+				_rangeToUpdateAsap = GetVisibleCellRange();
+			}
 		}
 
 		protected virtual void Update() {
@@ -65,7 +70,7 @@ namespace Spreadsheet {
 			return _value != null ? _value : _value = _objects.ToArray();
 		}
 
-		public virtual void InitializeRows() {
+		public virtual void InitializeData() {
 			rows.Clear();
 			CreateRowsForEachObject();
 		}
@@ -113,23 +118,6 @@ namespace Spreadsheet {
 			CellRange visible = GetVisibleCellRange();
 			//Debug.Log($"all {AllRange}, visible {visible}");
 			RefreshCells(visible);
-		}
-
-		public void SetPopup(Cell cell, string text) {
-			if (_popupUiElement == null) {
-				Cell popup = cellGenerator.MakeNewCell(cellGenerator.PopupUiTypeIndex).Set(this, CellPosition.Invalid);
-				_popupUiElement = popup.RectTransform;
-			} else {
-				_popupUiElement.SetAsLastSibling();
-			}
-			RectTransform cellRectTransform = cell.GetComponent<RectTransform>();
-			RectTransform popupRectTransform = _popupUiElement.GetComponent<RectTransform>();
-			Ui.SetText(_popupUiElement, text);
-			Ui.SetColor(_popupUiElement, _tooltipColor);
-			popupRectTransform.SetParent(ContentArea);
-			popupRectTransform.anchoredPosition = cellRectTransform.anchoredPosition
-				+ new Vector2(0, -cellRectTransform.sizeDelta.y);
-			_popupUiElement.gameObject.SetActive(true);
 		}
 	}
 }

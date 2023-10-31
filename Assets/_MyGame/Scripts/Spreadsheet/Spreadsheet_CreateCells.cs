@@ -14,6 +14,7 @@ namespace Spreadsheet {
 		private Vector3[] _viewportCorners = new Vector3[4];
 		private Vector3[] _contentCorners = new Vector3[4];
 		private bool _refreshRowPositions = true, _refreshColumnPositions = true;
+		[SerializeField] private bool _showRowHeaders = true, _showColumnHeaders = true;
 		private static bool _beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast = false;
 
 		/// <summary>
@@ -68,6 +69,16 @@ namespace Spreadsheet {
 			}
 			CellRange union = CellRange.Union(visibleRange, _lastRendered);
 			CellRange intersection = CellRange.Intersection(visibleRange, _lastRendered);
+			if (_showRowHeaders) {
+				MarkRowHeaders(visibleRange.Start.Row, visibleRange.End.Row, add, false);
+				MarkRowHeaders(union.Start.Row, intersection.Start.Row - 1, remove, true);
+				MarkRowHeaders(intersection.End.Row + 1, union.End.Row, remove, true);
+			}
+			if (_showColumnHeaders) {
+				MarkColumnHeaders(visibleRange.Start.Column, visibleRange.End.Column, add, false);
+				MarkColumnHeaders(union.Start.Column, intersection.Start.Column - 1, remove, true);
+				MarkColumnHeaders(intersection.End.Column + 1, union.End.Column, remove, true);
+			}
 			union.ForEach(cellPosition => {
 				// intersection of current and last visible cells may not have beed generated yet: RefreshCells can exit early.
 				if (intersection.Contains(cellPosition)) {
@@ -79,8 +90,19 @@ namespace Spreadsheet {
 				if (_lastRendered.Contains(cellPosition)) { remove.Add(cellPosition); }
 				if (visibleRange.Contains(cellPosition)) { add.Add(cellPosition); }
 			});
-			if (_popupUiElement != null) {
-				_popupUiElement.SetSiblingIndex(_popupUiElement.transform.parent.childCount - 1);
+		}
+
+		private void MarkRowHeaders(int start, int endInclusive, List<CellPosition> mark, bool skipNull) {
+			for (int r = start; r <= endInclusive; ++r) {
+				if ((rows[r].headerCell == null) == skipNull) { continue; }
+				mark.Add(new CellPosition(r, -1));
+			}
+		}
+
+		private void MarkColumnHeaders(int start, int endInclusive, List<CellPosition> mark, bool skipNull) {
+			for (int c = start; c <= endInclusive; ++c) {
+				if ((columns[c].headerCell == null) == skipNull) { continue; }
+				mark.Add(new CellPosition(-1, c));
 			}
 		}
 
@@ -95,30 +117,8 @@ namespace Spreadsheet {
 			return missing.Count > 0;
 		}
 
-		/// <summary>
-		/// TODO finish implementing this method, to add extra cells to be displayed
-		/// </summary>
-		/// <param name="visibleRange"></param>
-		private void PredictOneMoreCell(ref CellRange visibleRange) {
-			CellPosition deltaStart = visibleRange.Start - _lastRendered.Start;
-			CellPosition deltaEnd = visibleRange.End - _lastRendered.End;
-			CellPosition delta = deltaStart + deltaEnd;
-			if (System.Math.Abs(delta.Row) < visibleRange.Height / 2) {
-				if (delta.Row < 0) { visibleRange.Start.Row += delta.Row; }
-				if (delta.Row > 0) { visibleRange.End.Row += delta.Row; }
-			}
-			if (System.Math.Abs(delta.Column) < visibleRange.Width / 2) {
-				if (delta.Column < 0) { visibleRange.Start.Column += delta.Column; }
-				if (delta.Column > 0) { visibleRange.End.Row += delta.Column; }
-			}
-			visibleRange.ExcludeToIntersection(AllRange);
-		}
-
 		private void RemoveLostCells(List<CellPosition> toRemove) {
-			for (int i = 0; i < toRemove.Count; ++i) {
-				CellPosition cpos = toRemove[i];
-				cellGenerator.FreeCellUi(GetCellUi(cpos));
-			}
+			toRemove.ForEach(cpos => cellGenerator.FreeCellUi(GetCellUi(cpos)));
 		}
 
 		public Cell GetCellUi(CellPosition cellPosition) {
@@ -138,17 +138,27 @@ namespace Spreadsheet {
 		private void CreateNewCells(List<CellPosition> toAdd) {
 			for (int i = 0; i < toAdd.Count; ++i) {
 				CellPosition cpos = toAdd[i];
-				Cell cell = GetCellUi(cpos);
-				if (cell != null) {
-					if (cell.position != cpos) {
-						Debug.LogError($"invalid cell position at cell {cpos}");
-					}
-					cell.Set(this, cpos);
-				} else {
-					cell = cellGenerator.MakeNewCell(columns[cpos.Column].cellType).Set(this, cpos);
+				if (cpos.IsNormalPosition) {
+					CreateNormalCell(cpos);
+				} else if (cpos.IsEntireColumn) {
+					CreateColumnHeader(cpos.Column);
+				} else if (cpos.IsEntireRow) {
+					CreateRowHeader(cpos.Row);
 				}
-				PlaceCell(cell, GetCellDrawPosition(cpos));
 			}
+		}
+
+		private void CreateNormalCell(CellPosition cpos) {
+			Cell cell = GetCellUi(cpos);
+			if (cell != null) {
+				if (cell.position != cpos) {
+					Debug.LogError($"invalid cell position at cell {cpos}");
+				}
+				cell.Set(this, cpos);
+			} else {
+				cell = cellGenerator.MakeNewCell(columns[cpos.Column].cellType).Set(this, cpos);
+			}
+			PlaceCell(cell, GetCellDrawPosition(cpos));
 		}
 
 		public Vector2 GetCellDrawPosition(CellPosition cellPosition) {
@@ -194,6 +204,12 @@ namespace Spreadsheet {
 				CalculateColumnPositions();
 				_refreshColumnPositions = false;
 			}
+			Vector2 sizeDelta = ContentArea.sizeDelta;
+			Row lastRow = rows[rows.Count - 1];
+			Column lastColumn = columns[columns.Count - 1];
+			sizeDelta.y = lastRow.yPosition + lastRow.height;
+			sizeDelta.x = lastColumn.xPosition + lastColumn.width;
+			ContentArea.sizeDelta = sizeDelta;
 		}
 
 		private void CalculateRowPositions() {
@@ -305,70 +321,81 @@ namespace Spreadsheet {
 			ClearCells(RowHeadersArea);
 		}
 
-		public void GenerateColumnHeaders() {
+		public void InitializeColumnHeaders() {
 			ClearColumnHeaders();
-			float cursor = 0;
 			for (int i = 0; i < columns.Count; ++i) {
-				CellPosition cpos = new CellPosition(-1, i);
-				Cell cell = cellGenerator.MakeNewCell(1).Set(this, cpos);
-				RectTransform rect = cell.RectTransform;
-				rect.SetParent(ColumnHeadersArea);
-				rect.anchoredPosition = new Vector2(cursor, 0);
-				rect.sizeDelta = new Vector2(columns[i].width, columnRowHeaderSize.y);
-				cursor += columns[i].width + cellPadding.x;
-				string label = columns[i].label;
-				Ui.SetText(rect, label);
-				cell.name = label;
+				CreateColumnHeader(i);
 			}
-			cursor -= cellPadding.x;
-			ColumnHeadersArea.sizeDelta = new Vector2(cursor, columnRowHeaderSize.y);
 		}
 
-		public void GenerateRowHeaders() {
+		public void InitializeRowHeaders() {
 			ClearRowHeaders();
-			float cursor = 0;
 			for (int i = 0; i < rows.Count; ++i) {
-				Row row = rows[i];
-				CellPosition cpos = new CellPosition(i, -1);
-				Cell cell = cellGenerator.MakeNewCell(0).Set(this, cpos);
-				RectTransform rect = cell.RectTransform;
-				rect.SetParent(RowHeadersArea);
-				rect.anchoredPosition = new Vector2(0, -cursor);
-				rect.sizeDelta = new Vector2(columnRowHeaderSize.x, row.height);
-				cursor += row.height + cellPadding.y;
-				string label = row.label;
-				Ui.SetText(rect, label);
-				cell.name = label;
-				row.headerCell = cell.GetComponent<Cell>();
-				row.AssignHeaderSetFunction();
+				CreateRowHeader(i);
 			}
-			cursor -= cellPadding.y;
-			RowHeadersArea.sizeDelta = new Vector2(columnRowHeaderSize.x, cursor);
 		}
 
-		public void GenerateCells() {
-			Vector2 cursor = Vector2.zero;
-			for (int r = 0; r < rows.Count; ++r) {
-				Row row = rows[r];
-				cursor.x = 0;
-				Cell[] rowLookupTable = row.GetCellLookupTable(true);
-				if (row.Cells != rowLookupTable) {
-					throw new System.Exception("we have a problem... cells lookup table is not happening?");
-				}
-				for (int c = 0; c < row.output.Length; ++c) {
-					CellPosition cpos = new CellPosition(r, c);
-					Cell cell = cellGenerator.MakeNewCell(columns[c].cellType).Set(this, cpos);
-					rowLookupTable[c] = cell;
-					RectTransform rect = PlaceCell(cell, cursor);
-					Ui.SetText(rect, row.output[c]);
-					cursor.x += columns[c].width + cellPadding.x;
-				}
-				cursor.y -= row.height + cellPadding.y;
-			}
-			cursor.y *= -1;
-			cursor -= cellPadding;
-			ContentArea.sizeDelta = cursor;
-			_lastRendered = AllRange;
+		private void CreateColumnHeader(int i) {
+			RefreshCellPositionLookupTable();
+			Column column = columns[i];
+			if (column.headerCell != null) { return; }
+			CellPosition cpos = new CellPosition(-1, i);
+			Cell cell = cellGenerator.MakeNewCell(1).Set(this, cpos);
+			RectTransform rect = cell.RectTransform;
+			rect.SetParent(ColumnHeadersArea);
+			rect.anchoredPosition = new Vector2(column.xPosition, 0);
+			rect.sizeDelta = new Vector2(column.width, columnRowHeaderSize.y);
+			string label = column.label;
+			Ui.SetText(rect, label);
+			cell.name = label;
+			column.headerCell = cell;
 		}
+
+		private void FreeRowHeader(int i) {
+			cellGenerator.FreeCellUi(rows[i].headerCell);
+			rows[i].headerCell = null;
+		}
+
+		private void CreateRowHeader(int i) {
+			RefreshCellPositionLookupTable();
+			Row row = rows[i];
+			if (row.headerCell != null) { return; }
+			CellPosition cpos = new CellPosition(i, -1);
+			Cell cell = cellGenerator.MakeNewCell(0).Set(this, cpos);
+			RectTransform rect = cell.RectTransform;
+			rect.SetParent(RowHeadersArea);
+			rect.anchoredPosition = new Vector2(0, -row.yPosition);
+			rect.sizeDelta = new Vector2(columnRowHeaderSize.x, row.height);
+			string label = row.label;
+			Ui.SetText(rect, label);
+			cell.name = label;
+			row.headerCell = cell.GetComponent<Cell>();
+			row.AssignHeaderSetFunction();
+		}
+
+		//public void GenerateCells() {
+		//	Vector2 cursor = Vector2.zero;
+		//	for (int r = 0; r < rows.Count; ++r) {
+		//		Row row = rows[r];
+		//		cursor.x = 0;
+		//		Cell[] rowLookupTable = row.GetCellLookupTable(true);
+		//		if (row.Cells != rowLookupTable) {
+		//			throw new System.Exception("we have a problem... cells lookup table is not happening?");
+		//		}
+		//		for (int c = 0; c < row.output.Length; ++c) {
+		//			CellPosition cpos = new CellPosition(r, c);
+		//			Cell cell = cellGenerator.MakeNewCell(columns[c].cellType).Set(this, cpos);
+		//			rowLookupTable[c] = cell;
+		//			RectTransform rect = PlaceCell(cell, cursor);
+		//			Ui.SetText(rect, row.output[c]);
+		//			cursor.x += columns[c].width + cellPadding.x;
+		//		}
+		//		cursor.y -= row.height + cellPadding.y;
+		//	}
+		//	cursor.y *= -1;
+		//	cursor -= cellPadding;
+		//	ContentArea.sizeDelta = cursor;
+		//	_lastRendered = AllRange;
+		//}
 	}
 }

@@ -30,9 +30,13 @@ namespace Spreadsheet {
 			}
 		}
 
-		private void OnEnable() {
+		public void RestartFade() {
 			FadeTimer = 0;
 			_mouseHasHovered = _mouseIsHovering = false;
+		}
+
+		private void OnEnable() {
+			RestartFade();
 		}
 
 		public void SetTransparency(float progress) {
