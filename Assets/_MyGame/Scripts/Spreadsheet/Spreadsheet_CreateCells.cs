@@ -43,6 +43,7 @@ namespace Spreadsheet {
 			MarkWhichCellsChangedVisibility(visibleRange, _removeDuringUpdate, _addDuringUpdate);
 			RemoveLostCells(_removeDuringUpdate);
 			yield return null;
+			// create new cells after previous cells have probably been freed
 			CreateNewCells(_addDuringUpdate);
 			RefreshVisibleCells(visibleRange);
 			_lastRendered = visibleRange;
@@ -67,15 +68,16 @@ namespace Spreadsheet {
 			}
 			CellRange union = CellRange.Union(visibleRange, _lastRendered);
 			CellRange intersection = CellRange.Intersection(visibleRange, _lastRendered);
-			union.ForEach(cpos => {
-				if (intersection.Contains(cpos)) {
-					if (GetCellUi(cpos) == null) {
-						add.Add(cpos);
+			union.ForEach(cellPosition => {
+				// intersection of current and last visible cells may not have beed generated yet: RefreshCells can exit early.
+				if (intersection.Contains(cellPosition)) {
+					if (GetCellUi(cellPosition) == null) {
+						add.Add(cellPosition);
 					}
 					return;
 				}
-				if (_lastRendered.Contains(cpos)) { remove.Add(cpos); }
-				if (visibleRange.Contains(cpos)) { add.Add(cpos); }
+				if (_lastRendered.Contains(cellPosition)) { remove.Add(cellPosition); }
+				if (visibleRange.Contains(cellPosition)) { add.Add(cellPosition); }
 			});
 			if (_popupUiElement != null) {
 				_popupUiElement.SetSiblingIndex(_popupUiElement.transform.parent.childCount - 1);

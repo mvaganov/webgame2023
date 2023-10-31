@@ -91,6 +91,9 @@ namespace Spreadsheet {
 				Debug.LogError(errStr + "\n" + err.line+":"+err.letter+"  idx"+err.index);
 				spreadsheet.SetPopup(this, errStr);
 				SetColor(spreadsheet.ErrorCellColor);
+				Object textObject = Ui.GetTextObject(RectTransform);
+				//Debug.Log("set cursor " + err.index);
+				Ui.SetCursorPosition(textObject, err.index);
 			} else {
 				RefreshRestOfRow();
 			}

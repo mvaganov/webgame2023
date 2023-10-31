@@ -16,6 +16,28 @@ namespace Spreadsheet {
 			return null;
 		}
 
+		public static bool SetCursorPosition(Object obj, int cursor) {
+			switch (obj) {
+				case null: return false;
+				case TMPro.TMP_InputField tmpinf: SetCursorPosition(tmpinf, cursor); return true;
+				case InputField inf: SetCursorPosition(inf, cursor); return true;
+				case GameObject go: return SetCursorPosition(GetTextObject(go.GetComponent<RectTransform>()), cursor);
+				case Transform t: return SetCursorPosition(GetTextObject(t.GetComponent<RectTransform>()), cursor);
+				case Component c: return SetCursorPosition(GetTextObject(c.GetComponent<RectTransform>()), cursor);
+			}
+			return false;
+		}
+
+		public static void SetCursorPosition(TMPro.TMP_InputField field, int cursor) {
+			field.stringPosition = cursor;
+			field.caretPosition = cursor;
+			field.Select();
+		}
+
+		public static void SetCursorPosition(InputField field, int cursor) {
+			field.caretPosition = cursor;
+		}
+
 		public static UnityEvent<string> GetTextSubmitEvent(RectTransform rect) {
 			InputField inf = rect.GetComponentInChildren<InputField>();
 			if (inf != null) { return inf.onSubmit; }
@@ -139,7 +161,9 @@ namespace Spreadsheet {
 		public static Parse.Error SetPosition(object obj, object positionObj) {
 			Transform t = Ui.TransformFrom(obj);
 			Parse.Error err = Parse.ParseVector3(positionObj, out Vector3 newPosition);
-			t.localPosition = newPosition;
+			if (!Parse.IsError(err)) {
+				t.localPosition = newPosition;
+			}
 			return err;
 		}
 

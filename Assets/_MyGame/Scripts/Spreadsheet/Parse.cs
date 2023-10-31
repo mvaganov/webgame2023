@@ -144,7 +144,7 @@ namespace Spreadsheet {
 					//UnityEngine.Debug.Log($"parsing string '{s}'");
 					Parse.Error err = ParseFloatList(s, out List<float> out_numbers);
 					//UnityEngine.Debug.Log($"parsed [{out_numbers.Count}] {{{string.Join(",", out_numbers)}}}");
-					if (result == null || result.Length != out_numbers.Count) {
+					if (result == null || out_numbers == null || result.Length != out_numbers.Count) {
 						if (out_numbers != null) {
 							result = out_numbers.ToArray();
 						}
@@ -161,9 +161,9 @@ namespace Spreadsheet {
 			int index = 0;
 			List<object> out_tokens = new List<object>();
 			Parse.Error err = ParseList(text, ref index, out_tokens, null);
-			if (out_tokens.Count == 1) {
-				result = out_tokens[0];
-			}
+			//if (out_tokens.Count == 1) {
+			//	result = out_tokens[0];
+			//}
 			result = out_tokens;
 			return err;
 		}
@@ -477,6 +477,9 @@ namespace Spreadsheet {
 					}
 					char expectedFinish = EndCap(c);
 					if (expectedFinish != '\0') {
+						if (IsReadingToken()) {
+							tokenEnd = index;
+						}
 						//Log($"enclosure {c} expects finish with {expectedFinish}");
 						parenthesisNesting.Add(expectedFinish);
 						if (startedParse != index) {
@@ -521,10 +524,9 @@ namespace Spreadsheet {
 					}
 					string token = CurrentToken();
 					if (readingDigits) {
-						//UnityEngine.Debug.Log($"double parse '{token}'<-------------");
-						//string hey = "";
-						//for(int i = 0; i < token.Length; ++i) { hey += "[" + ((int)token[i]) + "]"; }
-						//UnityEngine.Debug.Log(hey);
+						//Log($"double parse '{token}'<-------------");
+						//string hey = ""; for (int i = 0; i < token.Length; ++i) { hey += "[" + ((int)token[i]) + "]"; }
+						//Log(hey);
 						double number = double.Parse(token);
 						out_tokens.Add(number);
 					} else {
