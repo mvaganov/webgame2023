@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Spreadsheet {
 	[System.Serializable]
@@ -192,6 +190,13 @@ namespace Spreadsheet {
 			if (other.End.Column   > End.Column)   { End.Column = other.End.Column; }
 		}
 
+		public void AddToUnion(CellPosition other) {
+			if (other.Row < Start.Row)       { Start.Row = other.Row; }
+			if (other.Column < Start.Column) { Start.Column = other.Column; }
+			if (other.Row > End.Row)         { End.Row = other.Row; }
+			if (other.Column > End.Column)   { End.Column = other.Column; }
+		}
+
 		public void ExcludeToIntersection(CellRange other) {
 			if (other.Start.Row    > Start.Row)    { Start.Row = other.Start.Row; }
 			if (other.Start.Column > Start.Column) { Start.Column = other.Start.Column; }
@@ -209,6 +214,33 @@ namespace Spreadsheet {
 			CellRange intersection = new CellRange(a);
 			intersection.ExcludeToIntersection(b);
 			return intersection;
+		}
+
+		public bool TryGetOtherCorner(CellPosition corner, out CellPosition othercorner) {
+			othercorner = new CellPosition();
+			if (corner.Row == Start.Row) {
+				othercorner.Row = End.Row;
+			} else if (corner.Row == End.Row) {
+				othercorner.Row = Start.Row;
+			} else {
+				othercorner.Row = -1;
+			}
+			if (corner.Column == Start.Column) {
+				othercorner.Column = End.Column;
+			} else if (corner.Column == End.Column) {
+				othercorner.Column = Start.Column;
+			} else {
+				othercorner.Column = -1;
+			}
+			return othercorner.IsNormalPosition;
+		}
+
+		public static CellRange operator -(CellRange range, CellPosition delta) {
+			return new CellRange(range.Start - delta, range.End - delta);
+		}
+
+		public static CellRange operator +(CellRange range, CellPosition delta) {
+			return new CellRange(range.Start + delta, range.End + delta);
 		}
 	}
 }

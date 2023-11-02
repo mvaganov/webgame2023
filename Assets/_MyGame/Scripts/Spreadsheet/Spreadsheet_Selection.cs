@@ -7,18 +7,34 @@ namespace Spreadsheet {
 		[ContextMenuItem(nameof(CopySelectionToClipboard), nameof(CopySelectionToClipboard))]
 		public List<CellRange> selection = new List<CellRange>();
 		private bool _selecting;
-		private CellPosition currentCellPosition = CellPosition.Invalid;
 		private CellRange currentCellSelection = CellRange.Invalid;
-		private Cell selectedCell;
+		private Cell currentSelectedCell;
+		private CellPosition currentSelectionPosition;
 
 		public void CellPointerDown(Cell cell) {
 			_selecting = true;
-			cell.Selected = true;
-			selectedCell = cell;
-			if (cell != null && cell.SelectableComponent != null) {
-				cell.SelectableComponent.OnSelect(null);
+			SelectCell(cell, cell.position);
+		}
+
+		public void SelectCell(Cell cell, CellPosition position) {
+			if (currentSelectedCell != null) {
+				currentSelectedCell.SelectableComponent.OnDeselect(null);
 			}
-			currentCellSelection = new CellRange(cell.position);
+			if (cell == null) {
+				cell = GetCellUi(position);
+			}
+			currentSelectedCell = cell;
+			currentSelectionPosition = position;
+			if (cell != null) {
+				cell.Selected = true;
+				if (cell.position != currentSelectionPosition) {
+					throw new System.Exception("cell and position expected to match!");
+				}
+				if (cell.SelectableComponent != null) {
+					cell.SelectableComponent.OnSelect(null);
+				}
+			}
+			currentCellSelection = new CellRange(currentSelectionPosition);
 			UpdateSelection();
 		}
 
@@ -30,6 +46,7 @@ namespace Spreadsheet {
 		}
 
 		private void UpdateSelection() {
+			CellRange cellRange = GetVisibleCellRange();
 			for (int r = 0; r < rows.Count; ++r) {
 				Row row = rows[r];
 				Cell[] cells = row.GetCellLookupTable(false);
@@ -43,8 +60,8 @@ namespace Spreadsheet {
 				}
 			}
 			if (currentCellSelection.Area > 1) {
-				selectedCell.SelectableComponent.OnPointerUp(FakePointerEventData);
-				selectedCell.SelectableComponent.OnDeselect(null);
+				currentSelectedCell.SelectableComponent.OnPointerUp(FakePointerEventData);
+				currentSelectedCell.SelectableComponent.OnDeselect(null);
 			}
 		}
 

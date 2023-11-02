@@ -8,8 +8,8 @@ namespace Spreadsheet {
 		public void CopySelectionToClipboard() {
 			StringBuilder sb = new StringBuilder();
 			CellPosition min = CellPosition.Invalid, max = CellPosition.Invalid;
-			if (selectedCell != null) {
-				min = max = selectedCell.position;
+			if (currentSelectedCell != null) {
+				min = max = currentSelectedCell.position;
 			}
 			if (currentCellSelection.IsValid) {
 				min = CellPosition.Min(min, currentCellSelection.Min);

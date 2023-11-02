@@ -49,6 +49,7 @@ namespace Spreadsheet {
 
 		protected virtual void Update() {
 			UpdateRefreshCells();
+			KeyboardUpdate();
 		}
 
 		/// <summary>

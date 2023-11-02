@@ -11,11 +11,19 @@ namespace Spreadsheet {
 		private int _updatingVisiblity;
 		private CellRange? _rangeToUpdateAsap;
 		private CellRange _lastRendered = CellRange.Invalid;
-		private Vector3[] _viewportCorners = new Vector3[4];
-		private Vector3[] _contentCorners = new Vector3[4];
+		//private Vector3[] _viewportCorners = new Vector3[4];
+		//private Vector3[] _contentCorners = new Vector3[4];
 		private bool _refreshRowPositions = true, _refreshColumnPositions = true;
 		[SerializeField] private bool _showRowHeaders = true, _showColumnHeaders = true;
 		private static bool _beNoisyAboutWeirdCornercaseRefreshBehaviorWhenScrollingFast = false;
+		/// <summary>
+		/// Cached cell range. prevents O(Log(N)) algorithm to find where a cell range is
+		/// </summary>
+		private CellRange _currentCellRange;
+		/// <summary>
+		/// Source data used to calculate of cached <see cref="_currentCellRange"/> is invalidated
+		/// </summary>
+		private Vector2 _cellVisibleStart, _cellVisibleEnd;
 
 		/// <summary>
 		/// Refreshes cells if <see cref="RefreshCells(CellRange)"/> was called while cells were refreshing
@@ -182,17 +190,21 @@ namespace Spreadsheet {
 		}
 
 		public CellRange GetVisibleCellRange() {
-			CellRange range = new CellRange();
 			RefreshCellPositionLookupTable();
 			Vector2 start = ScrollView.content.anchoredPosition;
 			start.x *= -1;
 			Vector2 end = start + ScrollView.viewport.rect.size;
-			range.Start.Row = BinarySearchLookupTable(rows, start.y, r => r.yPosition);
-			range.Start.Column = BinarySearchLookupTable(columns, start.x, c => c.xPosition);
-			range.End.Row = BinarySearchLookupTable(rows, end.y, r => r.yPosition);
-			range.End.Column = BinarySearchLookupTable(columns, end.x, c => c.xPosition);
-			range.ExcludeToIntersection(AllRange);
-			return range;
+			if (start == _cellVisibleStart && end == _cellVisibleEnd) {
+				return _currentCellRange;
+			}
+			_currentCellRange.Start.Row = BinarySearchLookupTable(rows, start.y, r => r.yPosition);
+			_currentCellRange.Start.Column = BinarySearchLookupTable(columns, start.x, c => c.xPosition);
+			_currentCellRange.End.Row = BinarySearchLookupTable(rows, end.y, r => r.yPosition);
+			_currentCellRange.End.Column = BinarySearchLookupTable(columns, end.x, c => c.xPosition);
+			_currentCellRange.ExcludeToIntersection(AllRange);
+			start = _cellVisibleStart;
+			end = _cellVisibleEnd;
+			return _currentCellRange;
 		}
 
 		private void RefreshCellPositionLookupTable() {
