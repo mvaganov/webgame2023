@@ -7,7 +7,7 @@ namespace Spreadsheet {
 		[ContextMenuItem(nameof(CopySelectionToClipboard), nameof(CopySelectionToClipboard))]
 		public List<CellRange> selection = new List<CellRange>();
 		private bool _selecting;
-		private CellRange currentCellSelection = CellRange.Invalid;
+		private CellRange currentCellSelectionRange = CellRange.Invalid;
 		private Cell currentSelectedCell;
 		private CellPosition currentSelectionPosition;
 
@@ -34,13 +34,13 @@ namespace Spreadsheet {
 					cell.SelectableComponent.OnSelect(null);
 				}
 			}
-			currentCellSelection = new CellRange(currentSelectionPosition);
+			currentCellSelectionRange = new CellRange(currentSelectionPosition);
 			UpdateSelection();
 		}
 
 		public void CellPointerMove(Cell cell) {
 			if (_selecting) {
-				currentCellSelection.End = cell.position;
+				currentCellSelectionRange.End = cell.position;
 				UpdateSelection();
 			}
 		}
@@ -59,14 +59,14 @@ namespace Spreadsheet {
 					cell.Selected = IsSelected(cell.position);
 				}
 			}
-			if (currentCellSelection.Area > 1) {
+			if (currentCellSelectionRange.Area > 1) {
 				currentSelectedCell.SelectableComponent.OnPointerUp(FakePointerEventData);
 				currentSelectedCell.SelectableComponent.OnDeselect(null);
 			}
 		}
 
 		public bool IsSelected(CellPosition cellPosition) {
-			if (currentCellSelection.IsValid && currentCellSelection.Contains(cellPosition)) {
+			if (currentCellSelectionRange.IsValid && currentCellSelectionRange.Contains(cellPosition)) {
 				return true;
 			}
 			for (int i = 0; i < selection.Count; ++i) {

@@ -11,9 +11,9 @@ namespace Spreadsheet {
 			if (currentSelectedCell != null) {
 				min = max = currentSelectedCell.position;
 			}
-			if (currentCellSelection.IsValid) {
-				min = CellPosition.Min(min, currentCellSelection.Min);
-				max = CellPosition.Max(max, currentCellSelection.Max);
+			if (currentCellSelectionRange.IsValid) {
+				min = CellPosition.Min(min, currentCellSelectionRange.Min);
+				max = CellPosition.Max(max, currentCellSelectionRange.Max);
 			}
 			for (int i = 0; i < selection.Count; ++i) {
 				CellRange csel = selection[i];

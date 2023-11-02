@@ -16,6 +16,7 @@ namespace Spreadsheet {
 		private Selectable _selectable;
 		/// <summary>Cached in <see cref="Awake"/></summary>
 		private Color _normalColor;
+		private Color _disabledColor;
 		/// <summary>Set in <see cref="AssignSetFunction"/></summary>
 		private System.Func<string, Parse.Error> setCellData;
 
@@ -33,7 +34,7 @@ namespace Spreadsheet {
 					if (value) {
 						SetColor(spreadsheet.MultiselectColor);
 					} else {
-						SetColor(_normalColor);
+						ResetColor();
 					}
 				}
 				_selected = value;
@@ -45,6 +46,14 @@ namespace Spreadsheet {
 		public void SetColor(Color color) {
 			ColorBlock block = _selectable.colors;
 			block.normalColor = color;
+			block.disabledColor = color;
+			_selectable.colors = block;
+		}
+
+		public void ResetColor() {
+			ColorBlock block = _selectable.colors;
+			block.normalColor = _normalColor;
+			block.disabledColor = _disabledColor;
 			_selectable.colors = block;
 		}
 
@@ -52,6 +61,7 @@ namespace Spreadsheet {
 			_selectable = GetComponent<Selectable>();
 			if (_selectable != null) {
 				_normalColor = _selectable.colors.normalColor;
+				_disabledColor = _selectable.colors.disabledColor;
 			}
 		}
 

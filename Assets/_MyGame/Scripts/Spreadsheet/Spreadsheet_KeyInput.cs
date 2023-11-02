@@ -13,9 +13,17 @@ namespace Spreadsheet {
 		};
 
 		private void KeyboardUpdate() {
+			if (currentSelectedCell != null && Ui.TryGetTextInputInteractable(currentSelectedCell, out bool interactable) && interactable) {
+				return;
+			}
 			foreach(KeyValuePair<KeyCode, CellPosition> keyDir in keyDirectionMap) {
 				if (Input.GetKeyDown(keyDir.Key)) {
 					MoveCurrentSelection(keyDir.Value);
+				}
+			}
+			if (Input.GetKeyDown(KeyCode.Return)) {
+				if (currentSelectedCell != null && Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
+					Ui.TrySetTextInputInteractable(currentSelectedCell, !isInteractable);
 				}
 			}
 		}

@@ -4,14 +4,34 @@ using UnityEngine.UI;
 
 namespace Spreadsheet {
 	public static class Ui {
-		public static Object GetTextObject(RectTransform rect) {
-			InputField inf = rect.GetComponentInChildren<InputField>();
+		public static Object GetTextObject(Transform transform) {
+			Object input = GetTextInputObject(transform);
+			if (input != null) { return input; }
+			return GetTextLabelObject(transform);
+		}
+
+		public static Object GetTextInputObject(Object obj) {
+			switch (obj) {
+				case null: return null;
+				case InputField:
+				case TMPro.TMP_InputField:
+					return obj;
+			}
+			return GetTextInputObject(TransformFrom(obj));
+		}
+
+		public static Object GetTextInputObject(Transform transform) {
+			InputField inf = transform.GetComponentInChildren<InputField>();
 			if (inf != null) { return inf; }
-			TMPro.TMP_InputField tmpinf = rect.GetComponentInChildren<TMPro.TMP_InputField>();
+			TMPro.TMP_InputField tmpinf = transform.GetComponentInChildren<TMPro.TMP_InputField>();
 			if (tmpinf != null) { return tmpinf; }
-			Text txt = rect.GetComponentInChildren<Text>();
+			return null;
+		}
+
+		public static Object GetTextLabelObject(Transform transform) {
+			Text txt = transform.GetComponentInChildren<Text>();
 			if (txt != null) { return txt; }
-			TMPro.TMP_Text tmptxt = rect.GetComponentInChildren<TMPro.TMP_Text>();
+			TMPro.TMP_Text tmptxt = transform.GetComponentInChildren<TMPro.TMP_Text>();
 			if (tmptxt != null) { return tmptxt; }
 			return null;
 		}
@@ -21,9 +41,9 @@ namespace Spreadsheet {
 				case null: return false;
 				case TMPro.TMP_InputField tmpinf: SetCursorPosition(tmpinf, cursor); return true;
 				case InputField inf: SetCursorPosition(inf, cursor); return true;
-				case GameObject go: return SetCursorPosition(GetTextObject(go.GetComponent<RectTransform>()), cursor);
-				case Transform t: return SetCursorPosition(GetTextObject(t.GetComponent<RectTransform>()), cursor);
-				case Component c: return SetCursorPosition(GetTextObject(c.GetComponent<RectTransform>()), cursor);
+				case GameObject go: return SetCursorPosition(GetTextObject(go.transform), cursor);
+				case Transform t: return SetCursorPosition(GetTextObject(t), cursor);
+				case Component c: return SetCursorPosition(GetTextObject(c.transform), cursor);
 			}
 			return false;
 		}
@@ -44,6 +64,36 @@ namespace Spreadsheet {
 			TMPro.TMP_InputField tmpinf = rect.GetComponentInChildren<TMPro.TMP_InputField>();
 			if (tmpinf != null) { return tmpinf.onSubmit; }
 			return null;
+		}
+
+		public static bool TryGetTextInputInteractable(Object obj, out bool interactable) {
+			switch (GetTextInputObject(obj)) {
+				case InputField inf:
+					interactable = inf.interactable;
+					return true;
+				case TMPro.TMP_InputField tmpinf:
+					interactable = tmpinf.interactable;
+					return true;
+			}
+			interactable = false;
+			return false;
+		}
+
+		public static bool TrySetTextInputInteractable(Object obj, bool interactable) {
+			switch (obj) {
+				case InputField inf:
+					inf.interactable = interactable;
+					return true;
+				case TMPro.TMP_InputField tmpinf:
+					tmpinf.interactable = interactable;
+					return true;
+				case Transform t:
+					return TrySetTextInputInteractable(GetTextInputObject(t), interactable);
+				case GameObject:
+				case Component:
+					return TrySetTextInputInteractable(TransformFrom(obj), interactable);
+			}
+			return false;
 		}
 
 		public static void SetText(Object rect, string text) {
