@@ -46,7 +46,6 @@ namespace Spreadsheet {
 		}
 
 		private void UpdateSelection() {
-			CellRange cellRange = GetVisibleCellRange();
 			for (int r = 0; r < rows.Count; ++r) {
 				Row row = rows[r];
 				Cell[] cells = row.GetCellLookupTable(false);

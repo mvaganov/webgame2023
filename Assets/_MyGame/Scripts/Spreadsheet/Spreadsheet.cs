@@ -37,8 +37,8 @@ namespace Spreadsheet {
 
 		protected virtual void Start() {
 			InitializeData();
-			InitializeColumnHeaders();
-			InitializeRowHeaders();
+			//InitializeColumnHeaders();
+			//InitializeRowHeaders();
 			//GenerateCells();
 			StartCoroutine(RefreshVisibleCellsAfterUiCalculates());
 			IEnumerator RefreshVisibleCellsAfterUiCalculates() {
