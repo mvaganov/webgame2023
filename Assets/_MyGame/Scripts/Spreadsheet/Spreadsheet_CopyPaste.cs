@@ -22,9 +22,9 @@ namespace Spreadsheet {
 					max = CellPosition.Max(max, csel.Max);
 				}
 			}
-			for (int r = min.Row; r <= max.Row; ++r) {
+			for (int r = min.Row; r >= 0 && r <= max.Row; ++r) {
 				if (r == -1) {
-					for (int c = min.Column; c <= max.Column; ++c) {
+					for (int c = min.Column; c >= 0 && c <= max.Column; ++c) {
 						if (c != min.Column) {
 							sb.Append('\t');
 						}

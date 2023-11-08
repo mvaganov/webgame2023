@@ -17,20 +17,26 @@ namespace Spreadsheet {
 			RefreshCells(CellRange.Invalid);
 		}
 
+		private void OnEnable() {
+			if (_rangeToUpdateAsap != null) {
+				StartCoroutine(RefreshCellsCoroutine(_rangeToUpdateAsap.Value));
+			}
+		}
+
 		private void UpdateRefreshCells() {
-			if (_rangeToUpdateAsap == null || _updatingVisiblity > 0) {
+			if (_rangeToUpdateAsap == null) {
 				return;
 			}
 			RefreshCells(_rangeToUpdateAsap.Value);
 		}
 
 		public void RefreshCells(CellRange visibleRange) {
-			if (_updatingVisiblity > 0) {
+			if (_updatingVisiblity > 0 || !isActiveAndEnabled) {
 				_rangeToUpdateAsap = visibleRange;
 				return;
 			}
 			_rangeToUpdateAsap = null;
-			Debug.Log("refresh");
+			//Debug.Log("refresh");
 			StartCoroutine(RefreshCellsCoroutine(visibleRange));
 		}
 
@@ -42,6 +48,7 @@ namespace Spreadsheet {
 			MarkWhichCellsChangedVisibility(visibleRange, _removeDuringUpdate, _addDuringUpdate);
 			RemoveLostCells(_removeDuringUpdate);
 			if (visibleRange == CellRange.Invalid) {
+				--_updatingVisiblity;
 				yield break;
 			}
 			yield return null;
