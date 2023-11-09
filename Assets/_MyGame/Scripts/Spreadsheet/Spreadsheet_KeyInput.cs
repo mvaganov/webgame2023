@@ -23,7 +23,7 @@ namespace Spreadsheet {
 			}
 			if (Input.GetKeyDown(KeyCode.Return)) {
 				if (currentSelectedCell != null && Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
-					Ui.TrySetTextInputInteractable(currentSelectedCell, !isInteractable);
+					currentSelectedCell.ToggleInteractable();
 				}
 			}
 		}

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -12,6 +13,8 @@ namespace Spreadsheet {
 
 		[SerializeField]
 		private bool _selected;
+		[SerializeField]
+		private bool _errorState;
 		/// <summary>Selectable element, pointer changes color. Cached in <see cref="Awake"/></summary>
 		private Selectable _selectable;
 		/// <summary>Cached in <see cref="Awake"/></summary>
@@ -25,7 +28,11 @@ namespace Spreadsheet {
 		public RectTransform RectTransform => GetComponent<RectTransform>();
 
 		public int CellTypeIndex => _cellTypeIndex;
-		public void SetCellTypeIndex(int cellTypeIndex) => _cellTypeIndex = cellTypeIndex;
+
+		public bool Interactable {
+			get => Ui.TryGetTextInputInteractable(this, out bool i) && i;
+			set => Ui.TrySetTextInputInteractable(this, value);
+		}
 
 		public bool Selected {
 			get => _selected;
@@ -42,6 +49,28 @@ namespace Spreadsheet {
 		}
 
 		public override string ToString() => (spreadsheet != null ? spreadsheet.name + "!" : "") + position.ToString();
+
+		public void ToggleInteractable() => Interactable = !Interactable;
+		
+		public void SetCellTypeIndex(int cellTypeIndex) => _cellTypeIndex = cellTypeIndex;
+
+		public void ToggleOffIfValid() {
+			if (_errorState) {
+				return;
+			}
+			bool interactable = Interactable;
+			if (interactable) {
+				Interactable = false;
+			}
+		}
+
+		private void SetCellOffNextFrameIfValidCallback(string str) {
+			StartCoroutine(ToggleOffNextFrame());
+			IEnumerator ToggleOffNextFrame() {
+				yield return null;
+				ToggleOffIfValid();
+			}
+		}
 
 		public void SetColor(Color color) {
 			ColorBlock block = _selectable.colors;
@@ -92,11 +121,13 @@ namespace Spreadsheet {
 			setCellData = str => func.Invoke(obj, str);
 			submitEvent.RemoveAllListeners();
 			submitEvent.AddListener(SetString);
+			submitEvent.AddListener(SetCellOffNextFrameIfValidCallback);
 		}
 
 		private void SetString(string str) {
 			Parse.Error err = setCellData(str);
 			if (err != null) {
+				_errorState = true;
 				string errStr = err.ToString();
 				Debug.LogError(errStr + "\n" + err.line+":"+err.letter+"  idx"+err.index);
 				spreadsheet.SetPopup(this, errStr);
@@ -106,6 +137,7 @@ namespace Spreadsheet {
 				Ui.SetCursorPosition(textObject, err.index);
 			} else {
 				RefreshRestOfRow();
+				_errorState = false;
 			}
 		}
 
