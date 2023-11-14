@@ -36,6 +36,11 @@ namespace Spreadsheet {
 			} else {
 				Debug.Log("cursor oob");
 			}
+			Vector2 ulCorner = new Vector2(columns[newPosition.Column].xPosition, rows[newPosition.Row].yPosition);
+			Vector2 size = new Vector2(columns[newPosition.Column].width, rows[newPosition.Row].height);
+			Rect nextRect = new Rect(ulCorner, size);
+			Debug.Log("nextrect "+nextRect);
+			ScrollToSee(nextRect);
 		}
-  }
+	}
 }

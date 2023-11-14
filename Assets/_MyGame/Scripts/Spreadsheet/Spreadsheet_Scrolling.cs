@@ -132,5 +132,13 @@ namespace Spreadsheet {
 		public void AdjustRowHeaders(Vector2 scroll) {
 			RowHeadersArea.anchoredPosition = new Vector2(RowHeadersArea.anchoredPosition.x, ContentArea.anchoredPosition.y);
 		}
+
+		public void ScrollToSee(Rect rect) {
+			Rect adjustedViewArea = ContentArea.rect;
+			Vector2 posMin = ContentArea.position;
+			
+			Debug.Log("NormPos "+ ScrollView.normalizedPosition+ "   pos " + posMin + "   rect " + adjustedViewArea);
+			// TODO scroll to see a specific rectangle, the one belonging to the Cell that was just selected.
+		}
 	}
 }
