@@ -2573,12 +2573,12 @@ MonoBehaviour:
   columns: []
   rows: []
   _nonConformingCells: []
-  columnRowHeaderSize: {x: 100, y: 40}
-  cellPadding: {x: 2, y: 1}
-  _showRowHeaders: 1
-  _showColumnHeaders: 1
+  _columnRowHeaderSize: {x: 100, y: 40}
+  _cellPadding: {x: 2, y: 1}
   ColumnHeadersArea: {fileID: 83612069}
   RowHeadersArea: {fileID: 1388695376}
+  _showRowHeaders: 1
+  _showColumnHeaders: 1
   selection: []
   _objects:
   - {fileID: 136297086}

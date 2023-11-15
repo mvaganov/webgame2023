@@ -6,5 +6,5 @@
 [ ] moving selection while editing a cell causes the edit to finish (submit or cancel, optional in spreadsheet)
 [ ] shift+arrow moves selection range
 [ ] tab and shift-tab moves between cells, also scrolls view
-[ ] moving the selection also scrolls if needed to keep the selected cell visible
+[\] moving the selection also scrolls if needed to keep the selected cell visible
 [ ] multiple error tooltips should be possible. they should not automatically fade away

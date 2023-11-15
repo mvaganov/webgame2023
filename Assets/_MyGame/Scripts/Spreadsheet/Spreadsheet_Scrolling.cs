@@ -136,8 +136,11 @@ namespace Spreadsheet {
 		public void ScrollToSee(Rect rect) {
 			Rect adjustedViewArea = ContentArea.rect;
 			Vector2 posMin = ContentArea.position;
-			
-			Debug.Log("NormPos "+ ScrollView.normalizedPosition+ "   pos " + posMin + "   rect " + adjustedViewArea);
+			Vector2 viewport = ScrollView.viewport.rect.size;
+			float vertical = (1 - ScrollView.verticalScrollbar.value) * (ContentArea.sizeDelta.y - viewport.y);
+			float horizontal = ScrollView.horizontalScrollbar.value * (ContentArea.sizeDelta.x - viewport.x);
+			Vector2 scrollPos = new Vector2(horizontal, vertical);
+			Debug.Log($"scrollPos {scrollPos}/{ContentArea.sizeDelta}    vp {viewport}    pos {posMin}   rect {adjustedViewArea}");
 			// TODO scroll to see a specific rectangle, the one belonging to the Cell that was just selected.
 		}
 	}
