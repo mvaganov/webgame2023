@@ -77,3 +77,7 @@ crashlytics-build.properties
 # TMPro
 /[Aa]ssets/TextMesh\ Pro/*
 /[Aa]ssets/TextMesh\ Pro.meta
+
+# Supercyan character assets
+/[Aa]ssets/[Ss]upercyan/
+/[Aa]ssets/[Ss]upercyan.meta
