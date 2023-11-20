@@ -23,15 +23,26 @@ namespace Spreadsheet {
 			if (cell == null) {
 				cell = GetCellUi(position);
 			}
+			bool newSelection = currentSelectedCell != cell;
+			if (currentSelectedCell != null && newSelection) {
+				currentSelectedCell.Interactable = false;
+			}
 			currentSelectedCell = cell;
 			currentSelectionPosition = position;
 			if (cell != null) {
-				cell.Selected = true;
-				if (cell.position != currentSelectionPosition) {
-					throw new System.Exception("cell and position expected to match!");
-				}
-				if (cell.SelectableComponent != null) {
-					cell.SelectableComponent.OnSelect(null);
+				if (cell.Selected && !cell.Interactable) {
+					cell.Interactable = true;
+				} else {
+					cell.Selected = true;
+					if (cell.position != currentSelectionPosition) {
+						throw new System.Exception("cell and position expected to match!");
+					}
+					//if (!newSelection) {
+					//	return;
+					//}
+					if (cell.SelectableComponent != null) {
+						cell.SelectableComponent.OnSelect(null);
+					}
 				}
 			}
 			currentCellSelectionRange = new CellRange(currentSelectionPosition);
@@ -77,7 +88,7 @@ namespace Spreadsheet {
 		}
 
 		public void CellPointerUp(Cell cell) {
-			UpdateSelection();
+			//UpdateSelection();
 			_selecting = false;
 		}
 	}
