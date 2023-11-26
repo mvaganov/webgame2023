@@ -96,6 +96,23 @@ namespace Spreadsheet {
 			return false;
 		}
 
+		public static bool TrySelectTextInput(Object obj) {
+			switch (obj) {
+				case InputField inf:
+					inf.Select();
+					return true;
+				case TMPro.TMP_InputField tmpinf:
+					tmpinf.Select();
+					return true;
+				case Transform t:
+					return TrySelectTextInput(GetTextInputObject(t));
+				case GameObject:
+				case Component:
+					return TrySelectTextInput(TransformFrom(obj));
+			}
+			return false;
+		}
+
 		public static void SetText(Object rect, string text) {
 			RectTransform shouldRefreshTextArea = null;
 			switch (rect) {

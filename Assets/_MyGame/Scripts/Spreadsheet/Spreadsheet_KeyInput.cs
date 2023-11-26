@@ -24,6 +24,9 @@ namespace Spreadsheet {
 			if (Input.GetKeyDown(KeyCode.Return)) {
 				if (currentSelectedCell != null && Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
 					currentSelectedCell.ToggleInteractable();
+					if (currentSelectedCell.Interactable) {
+						currentSelectedCell.Select();
+					}
 				}
 			}
 		}
