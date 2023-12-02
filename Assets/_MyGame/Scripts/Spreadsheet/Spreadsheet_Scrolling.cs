@@ -134,17 +134,26 @@ namespace Spreadsheet {
 		}
 
 		public void ScrollToSee(Rect rect) {
-			Rect adjustedViewArea = ContentArea.rect;
+			Rect contentRect = ContentArea.rect;
+			Vector2 contentSize = contentRect.size;
 			Vector2 posMin = ContentArea.position;
 			Vector2 viewportSize = ScrollView.viewport.rect.size;
-			float vertical = (1 - ScrollView.verticalScrollbar.value) * (ContentArea.sizeDelta.y - viewportSize.y);
-			float horizontal = ScrollView.horizontalScrollbar.value * (ContentArea.sizeDelta.x - viewportSize.x);
+			Vector2 normalPosition = ScrollView.normalizedPosition;
+			Debug.Log("!!!!"+normalPosition + " vs "+new Vector2(ScrollView.horizontalScrollbar.value, ScrollView.verticalScrollbar.value));
+			//float vertical = (1 - ScrollView.verticalScrollbar.value) * (ContentArea.sizeDelta.y - viewportSize.y);
+			//float horizontal = ScrollView.horizontalScrollbar.value * (ContentArea.sizeDelta.x - viewportSize.x);
+			float vertical = (1 - normalPosition.y) * (ContentArea.sizeDelta.y - viewportSize.y);
+			float horizontal = normalPosition.x * (ContentArea.sizeDelta.x - viewportSize.x);
 			Vector2 scrollPos = new Vector2(horizontal, vertical);
-			Debug.Log($"scrollPos {scrollPos}/{ContentArea.sizeDelta}    vp {viewportSize}    pos {posMin}   rect {adjustedViewArea}");
+			Debug.Log($"scrollPos {scrollPos}/{ContentArea.sizeDelta}    vp {viewportSize}    pos {posMin}   rect {contentRect}");
 			Vector2 upperLeft = scrollPos;
 			Vector2 lowerRight = scrollPos + viewportSize;
 			Rect screen = new Rect(scrollPos, viewportSize);
+			Debug.Log(screen + " @ " + contentSize);
 			// TODO scroll to see a specific rectangle, the one belonging to the Cell that was just selected.
+			
 		}
+
+		
 	}
 }
