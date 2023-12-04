@@ -18,7 +18,9 @@ namespace Spreadsheet {
 			}
 			foreach(KeyValuePair<KeyCode, CellPosition> keyDir in keyDirectionMap) {
 				if (Input.GetKeyDown(keyDir.Key)) {
-					MoveCurrentSelection(keyDir.Value);
+					if (MoveCurrentSelection(keyDir.Value)) {
+						ScrollToSee(currentSelectionPosition);
+					}
 				}
 			}
 			if (Input.GetKeyDown(KeyCode.Return)) {
@@ -31,18 +33,21 @@ namespace Spreadsheet {
 			}
 		}
 
-		public void MoveCurrentSelection(CellPosition delta) {
+		public bool MoveCurrentSelection(CellPosition delta) {
 			CellRange all = AllRange;
 			CellPosition newPosition = currentSelectionPosition + delta;
-			if (all.Contains(newPosition)) {
-				SelectCell(null, newPosition);
-			} else {
-				Debug.Log("cursor oob");
+			if (!all.Contains(newPosition)) {
+				return false;
 			}
-			Vector2 ulCorner = new Vector2(columns[newPosition.Column].xPosition, rows[newPosition.Row].yPosition);
-			Vector2 size = new Vector2(columns[newPosition.Column].width, rows[newPosition.Row].height);
+			SelectCell(null, newPosition);
+			return true;
+		}
+
+		public void ScrollToSee(CellPosition position) {
+			Vector2 ulCorner = new Vector2(columns[position.Column].xPosition, rows[position.Row].yPosition);
+			Vector2 size = new Vector2(columns[position.Column].width, rows[position.Row].height);
 			Rect nextRect = new Rect(ulCorner, size);
-			Debug.Log("nextrect "+nextRect);
+			//Debug.Log("nextrect " + nextRect);
 			ScrollToSee(nextRect);
 		}
 	}

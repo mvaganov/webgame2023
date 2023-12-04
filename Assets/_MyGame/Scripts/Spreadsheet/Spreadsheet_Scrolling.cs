@@ -133,27 +133,29 @@ namespace Spreadsheet {
 			RowHeadersArea.anchoredPosition = new Vector2(RowHeadersArea.anchoredPosition.x, ContentArea.anchoredPosition.y);
 		}
 
-		public void ScrollToSee(Rect rect) {
+		public void ScrollToSee(Rect targetRect) {
 			Rect contentRect = ContentArea.rect;
-			Vector2 contentSize = contentRect.size;
-			Vector2 posMin = ContentArea.position;
+			//Vector2 contentSize = contentRect.size;
+			//Vector2 posMin = ContentArea.position;
 			Vector2 viewportSize = ScrollView.viewport.rect.size;
 			Vector2 normalPosition = ScrollView.normalizedPosition;
-			Debug.Log("!!!!"+normalPosition + " vs "+new Vector2(ScrollView.horizontalScrollbar.value, ScrollView.verticalScrollbar.value));
-			//float vertical = (1 - ScrollView.verticalScrollbar.value) * (ContentArea.sizeDelta.y - viewportSize.y);
-			//float horizontal = ScrollView.horizontalScrollbar.value * (ContentArea.sizeDelta.x - viewportSize.x);
+			//Debug.Log("!!!!"+normalPosition + " vs "+new Vector2(ScrollView.horizontalScrollbar.value, ScrollView.verticalScrollbar.value));
 			float vertical = (1 - normalPosition.y) * (ContentArea.sizeDelta.y - viewportSize.y);
 			float horizontal = normalPosition.x * (ContentArea.sizeDelta.x - viewportSize.x);
 			Vector2 scrollPos = new Vector2(horizontal, vertical);
-			Debug.Log($"scrollPos {scrollPos}/{ContentArea.sizeDelta}    vp {viewportSize}    pos {posMin}   rect {contentRect}");
-			Vector2 upperLeft = scrollPos;
-			Vector2 lowerRight = scrollPos + viewportSize;
+			//Debug.Log($"scrollPos {scrollPos}/{ContentArea.sizeDelta}    vp {viewportSize}    pos {posMin}   rect {contentRect}");
 			Rect screen = new Rect(scrollPos, viewportSize);
-			Debug.Log(screen + " @ " + contentSize);
-			// TODO scroll to see a specific rectangle, the one belonging to the Cell that was just selected.
-			
+			//Debug.Log($"{screen} @ {contentSize} : {screen.CalculateOverlap(targetRect)}");
+			if (!screen.TryCalcDeltaToInclude(targetRect, out Vector2 delta)) {
+				//Debug.Log("no need to change");
+			} else {
+				Vector2 nextPosition = scrollPos + delta;
+				float normalY = 1 - nextPosition.y / (ContentArea.sizeDelta.y - viewportSize.y);
+				float normalX = nextPosition.x / (ContentArea.sizeDelta.x - viewportSize.x);
+				Vector2 newNormalPosition = new Vector2(normalX, normalY);
+				//Debug.Log($"need to change {scrollPos} -> {nextPosition}, {normalPosition} -> {newNormalPosition}");
+				ScrollView.normalizedPosition = newNormalPosition;
+			}
 		}
-
-		
 	}
 }
