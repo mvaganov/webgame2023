@@ -97,6 +97,9 @@ namespace Spreadsheet {
 		public static CellPosition operator +(CellPosition a, CellPosition b) {
 			return new CellPosition(a.Row + b.Row, a.Column + b.Column);
 		}
+		public static implicit operator CellPosition((int row, int col) tuple) {
+			return new CellPosition(tuple.row, tuple.col);
+		}
 	}
 
 	[System.Serializable]
