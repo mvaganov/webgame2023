@@ -6,6 +6,7 @@ namespace Spreadsheet {
 		public int Row, Column;
 		public static CellPosition Invalid = new CellPosition(-1, -1);
 		public static CellPosition Zero = new CellPosition(0, 0);
+		public static CellPosition One = new CellPosition(1, 1);
 		public bool IsEntireRow { get => Column < 0 && Row >= 0; set => Column = (value != IsEntireRow) ? ~Column : Column; }
 		public bool IsEntireColumn { get => Row < 0 && Column >= 0; set => Row = (value != IsEntireColumn) ? ~Row : Row; }
 		public bool IsNormalPosition { get => Column >= 0 && Row >= 0; }
@@ -14,6 +15,7 @@ namespace Spreadsheet {
 		public bool Equals(CellPosition other) => Row == other.Row && Column == other.Column;
 		public static bool operator ==(CellPosition left, CellPosition right) => left.Equals(right);
 		public static bool operator !=(CellPosition left, CellPosition right) => !left.Equals(right);
+		public static CellPosition operator -(CellPosition toMakeNegative) => new CellPosition(-toMakeNegative.Row, -toMakeNegative.Column);
 		public override bool Equals(object other) => other is CellPosition cell && Equals(cell);
 		public override int GetHashCode() => Column | (Row << 16);
 		public override string ToString() => $"{ColumnIntToString(Column)}{Row}";

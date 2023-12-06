@@ -1,8 +1,6 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace Spreadsheet {
 	public partial class Spreadsheet {
@@ -20,6 +18,8 @@ namespace Spreadsheet {
 			[KeyCode.A] = () => CellMove((0, -1)),
 			[KeyCode.S] = () => CellMove((1, 0)),
 			[KeyCode.D] = () => CellMove((0, 1)),
+			[KeyCode.LeftShift] = null,
+			[KeyCode.RightShift] = null,
 			[KeyCode.Return] = () => {
 				if (currentSelectedCell != null && Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
 					currentSelectedCell.ToggleInteractable();
@@ -27,12 +27,41 @@ namespace Spreadsheet {
 						currentSelectedCell.Select();
 					}
 				}
+			},
+			[KeyCode.Tab] = () => {
+				bool shiftPressed = (_keyPressDuration.TryGetDuration(KeyCode.LeftShift, out float lShift) && lShift > 0)
+				|| (!_keyPressDuration.TryGetDuration(KeyCode.LeftShift, out float rShift) && rShift > 0);
+				if (shiftPressed) {
+					CellMovePrev();
+				} else {
+					CellMoveNext();
+				}
 			}
 		};
 
 		private void CellMove(CellPosition direction) {
 			if (MoveCurrentSelection(direction)) {
 				ScrollToSee(currentSelectionPosition);
+			}
+		}
+
+		private void CellMoveNext() {
+			if (currentSelectionPosition.Column < columns.Count - 1) {
+				CellMove((0, 1));
+			} else if (currentSelectionPosition.Row < rows.Count - 1) {
+				CellMove((1, -currentSelectionPosition.Column));
+			} else {
+				CellMove(-currentSelectionPosition);
+			}
+		}
+
+		private void CellMovePrev() {
+			if (currentSelectionPosition.Column > 0) {
+				CellMove((0, -1));
+			} else if (currentSelectionPosition.Row > 0) {
+				CellMove((-1, columns.Count - 1));
+			} else {
+				CellMove(LastCell);
 			}
 		}
 
@@ -60,7 +89,9 @@ namespace Spreadsheet {
 				}
 			}
 			foreach(KeyCode keyCode in _keyPress) {
-				KeyMap[keyCode].Invoke();
+				Action keyAction = KeyMap[keyCode];
+				if (keyAction == null) { continue; }
+				keyAction.Invoke();
 				_keyPressDuration.AddDuration(keyCode, -_keyHoldRepeatDuration);
 			}
 			foreach (KeyCode keyCode in _keyRelease) {

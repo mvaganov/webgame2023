@@ -26,6 +26,8 @@ namespace Spreadsheet {
 
 		public CellRange AllRange => new CellRange(CellPosition.Zero, new CellPosition(rows.Count - 1, columns.Count - 1));
 
+		public CellPosition LastCell => new CellPosition(rows.Count - 1, columns.Count - 1);
+
 		public abstract System.Array Objects { get; set; }
 
 		public PointerEventData FakePointerEventData => _fakePointerEventData != null ? _fakePointerEventData
