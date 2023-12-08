@@ -113,7 +113,8 @@ namespace Spreadsheet {
 		}
 
 		public void AssignSetFunction(System.Func<object, object, Parse.Error> func) {
-			UnityEvent<string> submitEvent = Ui.GetTextSubmitEvent(GetComponent<RectTransform>());
+			RectTransform rt = GetComponent<RectTransform>();
+			UnityEvent<string> submitEvent = Ui.GetTextSubmitEvent(rt);
 			if (submitEvent == null) { return; }
 			if (spreadsheet == null) {
 				Debug.Log("failed to assign spreadsheet?");

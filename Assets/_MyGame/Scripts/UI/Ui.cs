@@ -66,6 +66,14 @@ namespace Spreadsheet {
 			return null;
 		}
 
+		public static UnityEvent<string> GetTextChangedEvent(RectTransform rect) {
+			InputField inf = rect.GetComponentInChildren<InputField>();
+			if (inf != null) { return inf.onValueChanged; }
+			TMPro.TMP_InputField tmpinf = rect.GetComponentInChildren<TMPro.TMP_InputField>();
+			if (tmpinf != null) { return tmpinf.onValueChanged; }
+			return null;
+		}
+
 		public static bool TryGetTextInputInteractable(Object obj, out bool interactable) {
 			switch (GetTextInputObject(obj)) {
 				case InputField inf:

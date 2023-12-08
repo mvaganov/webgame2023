@@ -7,9 +7,10 @@ namespace Spreadsheet {
 		private static DurationTracker<KeyCode> _keyPressDuration = new DurationTracker<KeyCode>();
 		[SerializeField]
 		private float _keyHoldRepeatDuration = 0.125f;
-		private Dictionary<KeyCode, Action> _keyMap;
-		private Dictionary<KeyCode, Action> KeyMap => _keyMap != null ? _keyMap :
-			_keyMap = new Dictionary<KeyCode, Action>() {
+		private Dictionary<KeyCode, Action> _keyMapNoCellSelected;
+		private Dictionary<KeyCode, Action> _keyMapCellSelected;
+		private Dictionary<KeyCode, Action> KeyMapNoCellSelected => _keyMapNoCellSelected != null ? _keyMapNoCellSelected :
+			_keyMapNoCellSelected = new Dictionary<KeyCode, Action>() {
 			[KeyCode.UpArrow] = () => CellMove((-1, 0)),
 			[KeyCode.LeftArrow] = () => CellMove((0, -1)),
 			[KeyCode.DownArrow] = () => CellMove((1, 0)),
@@ -20,24 +21,34 @@ namespace Spreadsheet {
 			[KeyCode.D] = () => CellMove((0, 1)),
 			[KeyCode.LeftShift] = null,
 			[KeyCode.RightShift] = null,
-			[KeyCode.Return] = () => {
-				if (currentSelectedCell != null && Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
-					currentSelectedCell.ToggleInteractable();
-					if (currentSelectedCell.Interactable) {
-						currentSelectedCell.Select();
-					}
-				}
-			},
-			[KeyCode.Tab] = () => {
-				bool shiftPressed = (_keyPressDuration.TryGetDuration(KeyCode.LeftShift, out float lShift) && lShift > 0)
-				|| (!_keyPressDuration.TryGetDuration(KeyCode.LeftShift, out float rShift) && rShift > 0);
-				if (shiftPressed) {
-					CellMovePrev();
-				} else {
-					CellMoveNext();
-				}
-			}
+			[KeyCode.Return] = HandleReturn,
+			[KeyCode.Tab] = HandleTab
 		};
+
+		private Dictionary<KeyCode, Action> KeyMapCellSelected => _keyMapCellSelected != null ? _keyMapCellSelected :
+		_keyMapCellSelected = new Dictionary<KeyCode, Action>() {
+			[KeyCode.Tab] = HandleTab
+		};
+
+		private void HandleReturn() {
+			if (currentSelectedCell == null || !Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
+				return;
+			}
+			currentSelectedCell.ToggleInteractable();
+			if (currentSelectedCell.Interactable) {
+				currentSelectedCell.Select();
+			}
+		}
+
+		private void HandleTab() {
+			bool shiftPressed = (_keyPressDuration.TryGetDuration(KeyCode.LeftShift, out float lShift) && lShift > 0)
+			|| (!_keyPressDuration.TryGetDuration(KeyCode.LeftShift, out float rShift) && rShift > 0);
+			if (shiftPressed) {
+				CellMovePrev();
+			} else {
+				CellMoveNext();
+			}
+		}
 
 		private void CellMove(CellPosition direction) {
 			if (MoveCurrentSelection(direction)) {
@@ -69,11 +80,19 @@ namespace Spreadsheet {
 		private HashSet<KeyCode> _keyRelease = new HashSet<KeyCode>();
 
 		private void KeyboardUpdate() {
-			if (currentSelectedCell != null && Ui.TryGetTextInputInteractable(currentSelectedCell, out bool interactable) && interactable) {
-				return;
+			bool selectedCell = currentSelectedCell != null
+			&& Ui.TryGetTextInputInteractable(currentSelectedCell, out bool interactable) && interactable;
+
+			if (selectedCell) {
+				KeyMapUpdate(KeyMapCellSelected);
+			} else {
+				KeyMapUpdate(KeyMapNoCellSelected);
 			}
+		}
+
+		private void KeyMapUpdate(Dictionary<KeyCode, Action> keyMapBlock) {
 			float t = Time.deltaTime;
-			foreach(var keyMap in KeyMap) {
+			foreach(var keyMap in keyMapBlock) {
 				if (Input.GetKeyDown(keyMap.Key)) {
 					_keyPress.Add(keyMap.Key);
 					_keyPressDuration.SetDuration(keyMap.Key, 0);
@@ -89,7 +108,7 @@ namespace Spreadsheet {
 				}
 			}
 			foreach(KeyCode keyCode in _keyPress) {
-				Action keyAction = KeyMap[keyCode];
+				Action keyAction = keyMapBlock[keyCode];
 				if (keyAction == null) { continue; }
 				keyAction.Invoke();
 				_keyPressDuration.AddDuration(keyCode, -_keyHoldRepeatDuration);

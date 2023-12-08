@@ -4,8 +4,8 @@
 [x] arrow moves selection
 [x] moving the selection also scrolls if needed to keep the selected cell visible
 [x] cells are not editable until user presses enter (but are selectable). enter toggles editability again (and submits).
+[x] tab and shift-tab moves between cells, also scrolls view
 [ ] moving selection while editing a cell causes the edit to finish (submit or cancel, optional in spreadsheet)
 [ ] shift+arrow moves selection range
-[x] tab and shift-tab moves between cells, also scrolls view
 [ ] multiple error tooltips should be possible. they should not automatically fade away
 [ ] drag and drop the left-most column to reorder
