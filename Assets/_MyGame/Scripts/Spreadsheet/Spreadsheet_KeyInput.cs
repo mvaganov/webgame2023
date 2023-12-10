@@ -51,8 +51,21 @@ namespace Spreadsheet {
 		}
 
 		private void CellMove(CellPosition direction) {
+			bool shiftIsDown = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+			bool addingToSelection = shiftIsDown;
+			CellRange selectionRange = new CellRange(currentSelectionPosition);
 			if (MoveCurrentSelection(direction)) {
 				ScrollToSee(currentSelectionPosition);
+				if (addingToSelection) {
+					if (selectionRange.Contains(currentSelectionPosition)) {
+						Debug.Log("reduce size?");
+					} else {
+						Debug.Log("increase size?");
+						selectionRange.AddToUnion(currentSelectionPosition);
+					}
+					currentCellSelectionRange = selectionRange;
+					UpdateSelection();
+				}
 			}
 		}
 
@@ -108,8 +121,9 @@ namespace Spreadsheet {
 				}
 			}
 			foreach(KeyCode keyCode in _keyPress) {
-				Action keyAction = keyMapBlock[keyCode];
-				if (keyAction == null) { continue; }
+				if (!keyMapBlock.TryGetValue(keyCode, out Action keyAction) || keyAction == null) {
+					continue;
+				}
 				keyAction.Invoke();
 				_keyPressDuration.AddDuration(keyCode, -_keyHoldRepeatDuration);
 			}

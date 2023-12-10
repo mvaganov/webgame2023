@@ -69,7 +69,7 @@ namespace Spreadsheet {
 					cell.Selected = IsSelected(cell.position);
 				}
 			}
-			if (currentCellSelectionRange.Area > 1) {
+			if (currentCellSelectionRange.Area > 1 && currentSelectedCell!= null && currentSelectedCell.SelectableComponent != null) {
 				currentSelectedCell.SelectableComponent.OnPointerUp(FakePointerEventData);
 				currentSelectedCell.SelectableComponent.OnDeselect(null);
 			}
