@@ -59,6 +59,8 @@ namespace Spreadsheet {
 				if (addingToSelection) {
 					if (selectionRange.Contains(currentSelectionPosition)) {
 						Debug.Log("reduce size?");
+						RectangleMath.RectDirection corner = selectionRange.GetClosestCorner(currentSelectionPosition);
+						selectionRange.SetCorner(corner, currentSelectionPosition);
 					} else {
 						Debug.Log("increase size?");
 						selectionRange.AddToUnion(currentSelectionPosition);

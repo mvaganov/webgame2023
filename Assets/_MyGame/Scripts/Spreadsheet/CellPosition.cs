@@ -107,19 +107,51 @@ namespace Spreadsheet {
 	[System.Serializable]
 	public struct CellRange {
 		public CellPosition Start, End;
-		public static CellRange Invalid = new CellRange(CellPosition.Zero, new CellPosition(-1,-1));
+		public static CellRange Invalid = new CellRange(CellPosition.Zero, new CellPosition(-1, -1));
 		public bool IsValid => Start.IsNormalPosition && End.IsNormalPosition;
 		public int Area => Width * Height;
 		public int Width => (Math.Abs(Start.Column - End.Column) + 1);
 		public int Height => (Math.Abs(Start.Row - End.Row) + 1);
 		public CellPosition Size => new CellPosition(Height, Width);
 		public CellPosition Min {
-			get => new CellPosition(Math.Min(Start.Row, End.Row), Math.Min(Start.Column, End.Column));
+			get => new CellPosition(MinRow, MinColumn);
 			set { Normalize(); Start = value; }
 		}
 		public CellPosition Max {
-			get => new CellPosition(Math.Max(Start.Row, End.Row), Math.Max(Start.Column, End.Column));
+			get => new CellPosition(MaxRow, MaxColumn);
 			set { Normalize(); End = value; }
+		}
+		public int MinColumn {
+			get => Math.Min(Start.Column, End.Column);
+			set {
+				if      (Start.Column < End.Column) { Start.Column = value; }
+				else if (Start.Column > End.Column) { End.Column = value; }
+				else {   Start.Column = End.Column = value; }
+			}
+		}
+		public int MaxColumn {
+			get => Math.Max(Start.Column, End.Column);
+			set {
+				if      (Start.Column > End.Column) { Start.Column = value; }
+				else if (Start.Column < End.Column) { End.Column = value; }
+				else {   Start.Column = End.Column = value; }
+			}
+		}
+		public int MinRow {
+			get => Math.Min(Start.Row, End.Row);
+			set {
+				if      (Start.Row < End.Row) { Start.Row = value; }
+				else if (Start.Row > End.Row) { End.Row = value; }
+				else {   Start.Row = End.Row = value; }
+			}
+		}
+		public int MaxRow {
+			get => Math.Max(Start.Row, End.Row);
+			set {
+				if      (Start.Row > End.Row) { Start.Row = value; }
+				else if (Start.Row < End.Row) { End.Row = value; }
+				else {   Start.Row = End.Row = value; }
+			}
 		}
 
 		public CellRange(int row, int column) : this (new CellPosition(row, column)) { }
@@ -162,9 +194,9 @@ namespace Spreadsheet {
 
 		public bool Contains(CellPosition position) {
 			return ((Start.Row <= position.Row && End.Row >= position.Row)
-				|| (Start.Row >= position.Row && End.Row <= position.Row))
+				||    (Start.Row >= position.Row && End.Row <= position.Row))
 				&& ((Start.Column <= position.Column && End.Column >= position.Column)
-				|| (Start.Column >= position.Column && End.Column <= position.Column));
+				||  (Start.Column >= position.Column && End.Column <= position.Column));
 		}
 
 		public void Normalize() {
@@ -246,6 +278,26 @@ namespace Spreadsheet {
 
 		public static CellRange operator +(CellRange range, CellPosition delta) {
 			return new CellRange(range.Start + delta, range.End + delta);
+		}
+
+		public RectangleMath.RectDirection GetClosestCorner(CellPosition point) {
+			RectangleMath.RectDirection dir = RectangleMath.RectDirection.None;
+			int fromMinX = Math.Abs(point.Column - Min.Column);
+			int fromMaxX = Math.Abs(point.Column - Max.Column);
+			int fromMinY = Math.Abs(point.Row - Min.Row);
+			int fromMaxY = Math.Abs(point.Row - Max.Row);
+			if (fromMinX <= fromMaxX) { dir |= RectangleMath.RectDirection.MinX; }
+			if (fromMinX >= fromMaxX) { dir |= RectangleMath.RectDirection.MaxX; }
+			if (fromMinY <= fromMaxY) { dir |= RectangleMath.RectDirection.MinY; }
+			if (fromMinY >= fromMaxY) { dir |= RectangleMath.RectDirection.MaxY; }
+			return dir;
+		}
+
+		public void SetCorner(RectangleMath.RectDirection dir, CellPosition point) {
+			if (dir.HasFlag(RectangleMath.RectDirection.MinX)) { MinColumn = point.Column; }
+			if (dir.HasFlag(RectangleMath.RectDirection.MaxX)) { MaxColumn = point.Column; }
+			if (dir.HasFlag(RectangleMath.RectDirection.MinY)) { MinRow = point.Row; }
+			if (dir.HasFlag(RectangleMath.RectDirection.MaxY)) { MaxRow = point.Row; }
 		}
 	}
 }
