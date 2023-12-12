@@ -53,13 +53,14 @@ namespace Spreadsheet {
 		private void CellMove(CellPosition direction) {
 			bool shiftIsDown = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
 			bool addingToSelection = shiftIsDown;
-			CellRange selectionRange = new CellRange(currentSelectionPosition);
+			CellRange selectionRange = new CellRange(currentCellSelectionRange);
+			CellPosition cellPosition = currentSelectionPosition;
 			if (MoveCurrentSelection(direction)) {
 				ScrollToSee(currentSelectionPosition);
 				if (addingToSelection) {
 					if (selectionRange.Contains(currentSelectionPosition)) {
-						Debug.Log("reduce size?");
-						RectangleMath.RectDirection corner = selectionRange.GetClosestCorner(currentSelectionPosition);
+						RectangleMath.RectDirection corner = selectionRange.GetClosestCorner(cellPosition);
+						Debug.Log("reduce size? "+corner+" "+ currentSelectionPosition);
 						selectionRange.SetCorner(corner, currentSelectionPosition);
 					} else {
 						Debug.Log("increase size?");
