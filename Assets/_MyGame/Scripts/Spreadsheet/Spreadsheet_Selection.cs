@@ -19,6 +19,7 @@ namespace Spreadsheet {
 		public void SelectCell(Cell cell, CellPosition position) {
 			if (currentSelectedCell != null) {
 				currentSelectedCell.SelectableComponent.OnDeselect(null);
+				SetCellSize(currentSelectedCell, 1);
 			}
 			if (cell == null) {
 				cell = GetCellUi(position);
@@ -30,16 +31,15 @@ namespace Spreadsheet {
 			currentSelectedCell = cell;
 			currentSelectionPosition = position;
 			if (cell != null) {
-				if (cell.Selected && !cell.Interactable) {
+				SetCellSize(currentSelectedCell, 1+1f/16);
+				bool oneCellBeingSelected = cell.Selected && !cell.Interactable && currentCellSelectionRange.Area == 1;
+				if (oneCellBeingSelected) {
 					cell.Interactable = true;
 				} else {
 					cell.Selected = true;
 					if (cell.position != currentSelectionPosition) {
 						throw new System.Exception("cell and position expected to match!");
 					}
-					//if (!newSelection) {
-					//	return;
-					//}
 					if (cell.SelectableComponent != null) {
 						cell.SelectableComponent.OnSelect(null);
 					}
@@ -47,6 +47,11 @@ namespace Spreadsheet {
 			}
 			currentCellSelectionRange = new CellRange(currentSelectionPosition);
 			UpdateSelection();
+		}
+
+		private void SetCellSize(Cell cell, float size) {
+			RectTransform rt = cell.GetComponent<RectTransform>();
+			rt.localScale = size * Vector3.one;
 		}
 
 		public void CellPointerMove(Cell cell) {

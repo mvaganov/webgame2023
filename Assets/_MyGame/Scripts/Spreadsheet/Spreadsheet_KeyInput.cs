@@ -31,6 +31,7 @@ namespace Spreadsheet {
 		};
 
 		private void HandleReturn() {
+			Debug.Log("RETURN!");
 			if (currentSelectedCell == null || !Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
 				return;
 			}
@@ -60,10 +61,8 @@ namespace Spreadsheet {
 				if (addingToSelection) {
 					if (selectionRange.Contains(currentSelectionPosition)) {
 						RectangleMath.RectDirection corner = selectionRange.GetClosestCorner(cellPosition);
-						Debug.Log("reduce size? "+corner+" "+ currentSelectionPosition);
 						selectionRange.SetCorner(corner, currentSelectionPosition);
 					} else {
-						Debug.Log("increase size?");
 						selectionRange.AddToUnion(currentSelectionPosition);
 					}
 					currentCellSelectionRange = selectionRange;
@@ -96,9 +95,9 @@ namespace Spreadsheet {
 		private HashSet<KeyCode> _keyRelease = new HashSet<KeyCode>();
 
 		private void KeyboardUpdate() {
+			bool interactable = false;
 			bool selectedCell = currentSelectedCell != null
-			&& Ui.TryGetTextInputInteractable(currentSelectedCell, out bool interactable) && interactable;
-
+			&& Ui.TryGetTextInputInteractable(currentSelectedCell, out interactable) && interactable;
 			if (selectedCell) {
 				KeyMapUpdate(KeyMapCellSelected);
 			} else {

@@ -31,7 +31,9 @@ namespace Spreadsheet {
 
 		public bool Interactable {
 			get => Ui.TryGetTextInputInteractable(this, out bool i) && i;
-			set => Ui.TrySetTextInputInteractable(this, value);
+			set {
+				Ui.TrySetTextInputInteractable(this, value);
+			}
 		}
 
 		internal void Select() {
