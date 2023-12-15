@@ -5,6 +5,18 @@ using UnityEngine;
 
 namespace Spreadsheet {
 	public partial class Spreadsheet {
+		public void PasteClipboardIntoSelection() {
+			string clipboard = GUIUtility.systemCopyBuffer;
+			string[] rows = clipboard.Split('\n');
+			string[][] data	= new string[rows.Length][];
+			for(int r = 0; r < rows.Length; ++r) {
+				data[r] = rows[r].Split('\t');
+				for (int c = 0; c < data[r].Length; ++c) {
+					CellPosition pos = new CellPosition(r, c) + currentCellSelectionRange.Min;
+					Debug.Log(pos+": "+data[r][c]);
+				}
+			}
+		}
 		public void CopySelectionToClipboard() {
 			StringBuilder sb = new StringBuilder();
 			CellPosition min = CellPosition.Invalid, max = CellPosition.Invalid;
