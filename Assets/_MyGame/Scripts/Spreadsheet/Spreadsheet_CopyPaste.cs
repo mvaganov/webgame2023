@@ -14,6 +14,11 @@ namespace Spreadsheet {
 				for (int c = 0; c < data[r].Length; ++c) {
 					CellPosition pos = new CellPosition(r, c) + currentCellSelectionRange.Min;
 					Debug.Log(pos+": "+data[r][c]);
+					try {
+						columns[c].SetData.Invoke(this.rows[r].data, data[r][c]);
+					}catch(System.Exception e) {
+						Debug.LogError(e);
+					}
 				}
 			}
 		}
