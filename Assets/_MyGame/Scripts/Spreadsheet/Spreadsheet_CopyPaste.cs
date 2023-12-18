@@ -13,10 +13,11 @@ namespace Spreadsheet {
 				data[r] = rows[r].Split('\t');
 				for (int c = 0; c < data[r].Length; ++c) {
 					CellPosition pos = new CellPosition(r, c) + currentCellSelectionRange.Min;
-					Debug.Log(pos+": "+data[r][c]);
+					string value = data[r][c];
+					Debug.Log(pos + ": " + value);
 					try {
-						columns[c].SetData.Invoke(this.rows[r].data, data[r][c]);
-					}catch(System.Exception e) {
+						SetCellValue(pos, value);
+					} catch(System.Exception e) {
 						Debug.LogError(e);
 					}
 				}
