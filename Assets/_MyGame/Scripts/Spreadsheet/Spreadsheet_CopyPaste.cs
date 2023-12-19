@@ -22,6 +22,7 @@ namespace Spreadsheet {
 					}
 				}
 			}
+			RefreshVisibleCells();
 		}
 		public void CopySelectionToClipboard() {
 			StringBuilder sb = new StringBuilder();
