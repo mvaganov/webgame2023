@@ -123,10 +123,10 @@ namespace Spreadsheet {
 			RefreshCells(visible);
 		}
 
-		public void SetCellValue(CellPosition position, string value) {
+		public Parse.Error SetCellValue(CellPosition position, string value) {
 			int r = position.Row;
 			int c = position.Column;
-			columns[c].SetData.Invoke(rows[r].data, value);
+			return columns[c].SetData.Invoke(rows[r].data, value);
 		}
 	}
 }

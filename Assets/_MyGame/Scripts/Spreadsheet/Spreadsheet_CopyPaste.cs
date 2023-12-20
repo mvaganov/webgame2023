@@ -14,11 +14,15 @@ namespace Spreadsheet {
 				for (int c = 0; c < data[r].Length; ++c) {
 					CellPosition pos = new CellPosition(r, c) + currentCellSelectionRange.Min;
 					string value = data[r][c];
-					Debug.Log(pos + ": " + value);
+					//Debug.Log(pos + ": " + value);
+					Parse.Error error = null;
 					try {
-						SetCellValue(pos, value);
+						error = SetCellValue(pos, value);
 					} catch(System.Exception e) {
 						Debug.LogError(e);
+					}
+					if (error != null) {
+						Debug.LogError(error);
 					}
 				}
 			}

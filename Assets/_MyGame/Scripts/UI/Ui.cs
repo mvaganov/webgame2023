@@ -246,6 +246,9 @@ namespace Spreadsheet {
 			Transform t = Ui.TransformFrom(obj);
 			float[] floats = new float[4];
 			Parse.Error err = Parse.ConvertFloatsList(rotationObj, ref floats);
+			if (floats == null || floats.Length != 4) {
+				return new Parse.Error($"unable to parse as float[4] for Quaternion: \"{rotationObj}\"");
+			}
 			t.localRotation = new Quaternion(floats[0], floats[1], floats[2], floats[3]);
 			return err;
 		}
