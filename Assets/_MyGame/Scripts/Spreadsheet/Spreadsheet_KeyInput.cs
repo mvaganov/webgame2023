@@ -31,7 +31,7 @@ namespace Spreadsheet {
 		};
 
 		private void HandleReturn() {
-			Debug.Log("RETURN!");
+//Debug.Log("RETURN!");
 			if (currentSelectedCell == null || !Ui.TryGetTextInputInteractable(currentSelectedCell, out bool isInteractable)) {
 				return;
 			}

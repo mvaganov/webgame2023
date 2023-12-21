@@ -234,8 +234,11 @@ namespace Spreadsheet {
 		}
 
 		public static Parse.Error SetPosition(object obj, object positionObj) {
+//Debug.Log($"Set Position");
 			Transform t = Ui.TransformFrom(obj);
+//Debug.Log($"Set Position: [{t}]");
 			Parse.Error err = Parse.ParseVector3(positionObj, out Vector3 newPosition);
+//Debug.Log($"Set Position err: [{err}] [{newPosition}]");
 			if (!Parse.IsError(err)) {
 				t.localPosition = newPosition;
 			}

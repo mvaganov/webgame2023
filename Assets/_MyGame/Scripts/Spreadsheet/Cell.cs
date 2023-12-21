@@ -14,13 +14,13 @@ namespace Spreadsheet {
 		[SerializeField]
 		private bool _selected;
 		[SerializeField]
-		private bool _errorState;
+		public bool ErrorState;
 		/// <summary>Selectable element, pointer changes color. Cached in <see cref="Awake"/></summary>
 		private Selectable _selectable;
 		/// <summary>Cached in <see cref="Awake"/></summary>
 		private Color _normalColor;
 		private Color _disabledColor;
-		/// <summary>Set in <see cref="AssignSetFunction"/></summary>
+		/// <summary>Set in <see cref="AssignSetFunction"/>. This is a cached method that invokes the column's set method</summary>
 		private System.Func<string, Parse.Error> setCellData;
 
 		public Selectable SelectableComponent => _selectable;
@@ -61,7 +61,7 @@ namespace Spreadsheet {
 		public void SetCellTypeIndex(int cellTypeIndex) => _cellTypeIndex = cellTypeIndex;
 
 		public void ToggleOffIfValid() {
-			if (_errorState) {
+			if (ErrorState) {
 				return;
 			}
 			bool interactable = Interactable;
@@ -70,7 +70,7 @@ namespace Spreadsheet {
 			}
 		}
 
-		private void SetCellOffNextFrameIfValidCallback(string str) {
+		public void SetCellOffNextFrameIfValidCallback(string str) {
 			StartCoroutine(ToggleOffNextFrame());
 			IEnumerator ToggleOffNextFrame() {
 				yield return null;
@@ -131,21 +131,22 @@ namespace Spreadsheet {
 			submitEvent.AddListener(SetCellOffNextFrameIfValidCallback);
 		}
 
-		private void SetString(string str) {
-			Parse.Error err = setCellData(str);
-			if (err != null) {
-				_errorState = true;
-				string errStr = err.ToString();
-				Debug.LogError(errStr + "\n" + err.line+":"+err.letter+"  idx"+err.index);
-				spreadsheet.SetPopup(this, errStr);
-				SetColor(spreadsheet.ErrorCellColor);
-				Object textObject = Ui.GetTextObject(RectTransform);
-				//Debug.Log("set cursor " + err.index);
-				Ui.SetCursorPosition(textObject, err.index);
-			} else {
-				RefreshRestOfRow();
-				_errorState = false;
-			}
+		public void SetString(string str) {
+			spreadsheet.SetCellValue(position, str);
+			//Parse.Error err = setCellData(str);
+			//if (err != null) {
+			//	ErrorState = true;
+			//	string errStr = err.ToString();
+			//	Debug.LogError(errStr + "\n" + err.line+":"+err.letter+"  idx"+err.index);
+			//	spreadsheet.SetPopup(this, errStr);
+			//	SetColor(spreadsheet.ErrorCellColor);
+			//	Object textObject = Ui.GetTextObject(RectTransform);
+			//	//Debug.Log("set cursor " + err.index);
+			//	Ui.SetCursorPosition(textObject, err.index);
+			//} else {
+			//	RefreshRestOfRow();
+			//	ErrorState = false;
+			//}
 		}
 
 		public void RefreshRestOfRow() {

@@ -78,6 +78,7 @@ namespace Spreadsheet {
 		}
 
 		public static Parse.Error ParseVector3(object positionObj, out Vector3 v3) {
+//Log($"parsing \"{positionObj}\"");
 			float[] floats = null;
 			switch (positionObj) {
 				case Vector3 v: v3 = v; return null;
@@ -216,6 +217,7 @@ namespace Spreadsheet {
 			int index = 0;
 			List<object> out_tokens = new List<object>();
 			Parse.Error err = ParseList(text, ref index, out_tokens, null);
+//Log($"Parsing float list {text}: {string.Join(", ", out_tokens)}");
 			if (IsError(err)) {
 				list = null;
 				return err;
@@ -362,7 +364,7 @@ namespace Spreadsheet {
 					throw new Exception("loop broken! "+index+" @ "+text.Substring(0, index)+"|"+text.Substring(index));
 				}
 				char c = text[index];
-				//Log($"{c}@{index} d{readingDigits} f{readingFloat} t{readingOtherToken} s{readingStringLiteral != '\0'}");
+//Log($"{c}@{index} d{readingDigits} f{readingFloat} t{readingOtherToken} s{readingStringLiteral != '\0'}");
 				if (IsReadingStringLiteral()) {
 					if (c == '\\') {
 						++index;
@@ -371,7 +373,7 @@ namespace Spreadsheet {
 						}
 					} else if (c == readingStringLiteral) {
 						tokenEnd = index;
-						//Log($"\"token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+//Log($"\"token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 						Parse.Error err = Unescape(text, out string resultToken, tokenStart, tokenEnd);
 						out_tokens.Add(resultToken);
 						return err;
@@ -380,16 +382,16 @@ namespace Spreadsheet {
 					if (index > text.Length) {
 						return new Parse.Error($"missing {readingStringLiteral} for unfinished string literal", text, tokenStart);
 					}
-					//Log($"continue literal {index} < {text.Length}");
+//Log($"continue literal {index} < {text.Length}");
 					continue;
 				} else if (IsWhiteSpace(c)) {
 					if (IsReadingToken()) {
 						tokenEnd = index;
-						//Log($"   token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+//Log($"   token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 					} else {
 						++index;
 						if (index < text.Length) {
-							//Log($"continue whitespace {index} ({c}) < {text.Length}");
+//Log($"continue whitespace {index} ({c}) < {text.Length}");
 							continue;
 						}
 					}
@@ -397,7 +399,7 @@ namespace Spreadsheet {
 					if (readingDigits || readingOtherToken) {
 						++index;
 						if (index < text.Length) {
-							//Log($"continue digit {index} < {text.Length}");
+//Log($"continue digit {index} < {text.Length}");
 							continue;
 						}
 					} else if (!IsReadingToken()) {
@@ -407,20 +409,20 @@ namespace Spreadsheet {
 				} else if (IsLetter(c)) {
 					if (readingDigits) {
 						tokenEnd = index;
-						//Log($"num->char token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+//Log($"num->char token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 						readingOtherToken = true;
 					} else if (readingOtherToken) {
 						++index;
 						if (index < text.Length) {
-							//Log($"continue token {index} < {text.Length}");
+//Log($"continue token {index} < {text.Length}");
 							continue;
 						} else {
-							//Log("token finished?");
+//Log("token finished?");
 						}
 					} else if (!IsReadingToken()) {
 						tokenStart = index;
 						readingOtherToken = true;
-						//Log("token started");
+//Log("token started");
 					}
 				} else if (IsComma(c)) {
 					bool emptyCommaNeedsEmptyToken = !IsReadingToken() && finishedLastTokenElementWithComma;
@@ -433,24 +435,26 @@ namespace Spreadsheet {
 					} else {
 						finishedLastTokenElementWithComma = true;
 					}
-					//string tokenBeforeComma = IsReadingToken() ? $"\"{CurrentToken()}\"" : "none";
-					//Log($", token {tokenStart}:{tokenEnd} {tokenBeforeComma}");
+//string tokenBeforeComma = IsReadingToken() ? $"\"{CurrentToken()}\"" : "none";
+//Log($", token {tokenStart}:{tokenEnd} {tokenBeforeComma}");
 				} else {
 					int last = parenthesisNesting.Count - 1;
 					char currentEnclosureFinish = last >= 0 ? parenthesisNesting[last] : '\0';
-					//Log($"enclosure? {c} vs {currentEnclosureFinish}");
+//Log($"enclosure? {c} vs {currentEnclosureFinish}");
 					if (currentEnclosureFinish == c) {
-						//Log("found end!");
+//Log("found end!");
 						parenthesisNesting.RemoveAt(last);
 						if (IsReadingToken()) {
-							//Log("finished at EXPECTED enclosure token");
+//Log("finished at EXPECTED enclosure token");
 							tokenEnd = index;
-							//	Log($"{c} token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
-							//} else {
-							//	Log($"finished multi-token enclosure {c} {index} / {text.Length}");
+//	Log($"{c} token {tokenStart}:{tokenEnd} \"{CurrentToken()}\"");
+//} else {
+//	Log($"finished multi-token enclosure {c} {index} / {text.Length}");
 						}
-						if (parenthesisNesting.Count == 0 && isFinished != null && isFinished.Invoke(c)) {
+						if (parenthesisNesting.Count == 0 && (isFinished == null || isFinished.Invoke(c))) {
 							finishedEarly = true;
+						} else {
+//Log($"NOT FINISHED EARLY??? ({string.Join(", ", parenthesisNesting)}), finished?{isFinished}");
 						}
 					} else if (!readingOtherToken && IsDecimalPoint(c)) {
 						if (!readingFloat) {
@@ -460,29 +464,30 @@ namespace Spreadsheet {
 						}
 						++index;
 						if (index < text.Length) {
-							//Log($"continue float {index} < {text.Length}");
+//Log($"continue float {index} < {text.Length}");
 							continue;
 						}
 					} else if (IsSign(c) && !readingDigits && !readingOtherToken) {
 						char nextChar = ((index + 1) < text.Length) ? text[index + 1] : '\0';
-						//UnityEngine.Debug.Log($"Sign {c}, next is {nextChar}");
+//Log($"Sign {c}, next is {nextChar}");
 						if (IsDigit(nextChar) || IsDecimalPoint(nextChar)) {
 							tokenStart = index;
 							readingDigits = true;
 							++index;
 							if (index < text.Length) {
-								//Log($"continue signed digit {index} < {text.Length}");
+//Log($"continue signed digit {index} < {text.Length}");
 								continue;
 							}
 						}
 					}
+//Log("~~~~~~~~~~~~~~");
 					char expectedFinish = EndCap(c);
 					if (expectedFinish != '\0') {
 						if (IsReadingToken()) {
-							//Log("finished at unexpected enclosure token");
+//Log("finished at unexpected enclosure token");
 							tokenEnd = index;
 						}
-						//Log($"enclosure {c} expects finish with {expectedFinish}");
+//Log($"enclosure {c} expects finish with {expectedFinish}");
 						parenthesisNesting.Add(expectedFinish);
 						if (startedParse != index) {
 							List<object> tokens = new List<object>();
@@ -491,7 +496,7 @@ namespace Spreadsheet {
 							if (IsError(error)) {
 								return error;
 							}
-							//Log($"new list started@{startedParse}, ended@{index} / {text.Length}    \"{text}\"");
+//Log($"new list started@{startedParse}, ended@{index} / {text.Length}    \"{text}\"");
 							c = index < text.Length ? text[index] : '\0';
 							object whatToAdd = IsStringLiteralCap(expectedFinish) ? tokens[0] :
 								new TokenList(tokens, startedNewListAt);
@@ -508,21 +513,24 @@ namespace Spreadsheet {
 								readingStringLiteral = expectedFinish;
 								tokenStart = ++index;
 								if (index < text.Length) {
-									//Log($"literal started {index} < {text.Length}");
+//Log($"literal started {index} < {text.Length}");
 									continue;
 								}
 							}
 						}
 					}
-					char unexpectedFinish = BeginCap(c);
-					if (unexpectedFinish != '\0') {
-						return new Parse.Error($"unexpected end of enclosure '{unexpectedFinish}'", text, index);
+//Log("$$$$$$$$$$$$$$$ "+ finishedEarly);
+					if (!finishedEarly) {
+						char unexpectedFinish = BeginCap(c);
+						if (unexpectedFinish != '\0') {
+							return new Parse.Error($"unexpected end of enclosure '{unexpectedFinish}'", text, index);
+						}
 					}
 				}
 				if(IsReadingToken() && !IsFinishedReadingToken() && index >= text.Length-1) {
 					tokenEnd = text.Length;
 					finishedEarly = true;
-					//Log($"EOF token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
+//Log($"EOF token {tokenStart}:{tokenEnd}\"{CurrentToken()}\"");
 				}
 				if (IsFinishedReadingToken()) {
 					if (!IsReadingToken()) {
@@ -530,11 +538,11 @@ namespace Spreadsheet {
 					}
 					string token = CurrentToken();
 					if (readingDigits) {
-						//Log($"double parse '{token}'<-------------");
-						//string hey = ""; for (int i = 0; i < token.Length; ++i) {
-						//	char ch = token[i] != '\0' ? token[i] : ' '; hey += $"[{(int)token[i]} {ch}]";
-						//}
-						//Log(hey);
+//Log($"double parse '{token}'<-------------");
+//string hey = ""; for (int i = 0; i < token.Length; ++i) {
+//	char ch = token[i] != '\0' ? token[i] : ' '; hey += $"[{(int)token[i]} {ch}]";
+//}
+//Log(hey);
 
 						double number = double.Parse(token);
 						out_tokens.Add(number);
@@ -553,17 +561,17 @@ namespace Spreadsheet {
 					readingOtherToken = false;
 					readingStringLiteral = '\0';
 					finishedLastTokenElementWithComma = IsComma(c);
-					//if (finishedLastTokenElementWithComma) {
-					//	Log(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
-					//}
-					//Log($"finished token ({token}) {index} < {text.Length}");
+//if (finishedLastTokenElementWithComma) {
+//	Log(",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,");
+//}
+//Log($"finished token ({token}) {index} < {text.Length}");
 					continue;
 				}
 				if (!finishedEarly) {
 					++index;
 				}
 			}
-			//UnityEngine.Debug.Log($"###### token count: {out_tokens.Count}   {index} < {text.Length}");
+//Log($"###### token count: {out_tokens.Count}   {index} < {text.Length}");
 			return null;
 		}
 

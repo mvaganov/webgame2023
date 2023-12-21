@@ -126,7 +126,37 @@ namespace Spreadsheet {
 		public Parse.Error SetCellValue(CellPosition position, string value) {
 			int r = position.Row;
 			int c = position.Column;
-			return columns[c].SetData.Invoke(rows[r].data, value);
+			Parse.Error error = columns[c].SetData.Invoke(rows[r].data, value);
+			Cell cell = GetCellUi(position);
+			if (error != null && error.IsError) {
+				if (cell != null) {
+					cell.ErrorState = true;
+					cell.SetColor(ErrorCellColor);
+					Object textObject = Ui.GetTextObject(cell.RectTransform);
+					//Debug.Log("set cursor " + err.index);
+					Ui.SetCursorPosition(textObject, error.index);
+				}
+				string errStr = error.ToString();
+				Debug.LogError(errStr + "\n" + error.line + ":" + error.letter + "  idx" + error.index);
+				SetPopup(cell, errStr);
+			} else {
+				RefreshRestOfRow(position);
+				if (cell != null) {
+					cell.ErrorState = false;
+				}
+			}
+			return error;
+		}
+
+		private void RefreshRestOfRow(CellPosition position) {
+			Row row = rows[position.Row];
+			//if (row.Cells[position.Column] != this) {
+			//	throw new System.Exception($"expected to be modifying {this}\nfound {row.Cells[position.Row]}");
+			//}
+			Cell c = row.Cells[position.Column];
+			row.Cells[position.Column] = null;
+			row.Refresh(this);
+			row.Cells[position.Column] = c;
 		}
 	}
 }
