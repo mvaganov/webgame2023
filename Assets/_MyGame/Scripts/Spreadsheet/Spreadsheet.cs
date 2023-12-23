@@ -138,7 +138,7 @@ namespace Spreadsheet {
 				}
 				string errStr = error.ToString();
 				Debug.LogError(errStr + "\n" + error.line + ":" + error.letter + "  idx" + error.index);
-				SetPopup(cell, errStr);
+				SetMetaData(cell, new MetaData(MetaDataKind.Error, errStr));
 			} else {
 				RefreshRestOfRow(position);
 				if (cell != null) {
@@ -150,9 +150,6 @@ namespace Spreadsheet {
 
 		private void RefreshRestOfRow(CellPosition position) {
 			Row row = rows[position.Row];
-			//if (row.Cells[position.Column] != this) {
-			//	throw new System.Exception($"expected to be modifying {this}\nfound {row.Cells[position.Row]}");
-			//}
 			Cell c = row.Cells[position.Column];
 			row.Cells[position.Column] = null;
 			row.Refresh(this);

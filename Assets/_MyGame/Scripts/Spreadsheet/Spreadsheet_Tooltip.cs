@@ -4,9 +4,28 @@ using UnityEngine;
 
 namespace Spreadsheet {
 	public partial class Spreadsheet {
+		public enum MetaDataKind { None, Error, Note }
+		public class MetaData {
+			public MetaDataKind kind;
+			public string data;
+			public MetaData(MetaDataKind metaKind, string data) {
+				this.kind = metaKind; this.data = data;
+			}
+		}
+
 		private RectTransform _tooltipUiElement;
 		private RectTransform _tooltipAnchor;
-		public void SetPopup(Cell cell, string text) {
+		private Dictionary<CellPosition, List<MetaData>> cellMetaData = new Dictionary<CellPosition, List<MetaData>>();
+
+		public void AddMetaData(CellPosition cellPosition, MetaData metaData) {
+			if (!cellMetaData.TryGetValue(cellPosition, out var metaList)) {
+				cellMetaData[cellPosition] = metaList = new List<MetaData> ();
+			}
+			metaList.Add(metaData);
+		}
+
+		public void SetMetaData(Cell cell, MetaData metaData) {
+			AddMetaData(cell.position, metaData);
 			if (_tooltipUiElement == null) {
 				Cell popup = cellGenerator.MakeNewCell(cellGenerator.PopupUiTypeIndex).Set(this, CellPosition.Invalid);
 				_tooltipUiElement = popup.RectTransform;
@@ -21,7 +40,7 @@ namespace Spreadsheet {
 			}
 			RectTransform cellRectTransform = cell.GetComponent<RectTransform>();
 			RectTransform popupRectTransform = _tooltipUiElement.GetComponent<RectTransform>();
-			Ui.SetText(_tooltipUiElement, text);
+			Ui.SetText(_tooltipUiElement, metaData.data);
 			Ui.SetColor(_tooltipUiElement, _tooltipColor);
 			popupRectTransform.SetParent(_transform.parent);
 			_tooltipAnchor.SetParent(ContentArea);

@@ -133,30 +133,6 @@ namespace Spreadsheet {
 
 		public void SetString(string str) {
 			spreadsheet.SetCellValue(position, str);
-			//Parse.Error err = setCellData(str);
-			//if (err != null) {
-			//	ErrorState = true;
-			//	string errStr = err.ToString();
-			//	Debug.LogError(errStr + "\n" + err.line+":"+err.letter+"  idx"+err.index);
-			//	spreadsheet.SetPopup(this, errStr);
-			//	SetColor(spreadsheet.ErrorCellColor);
-			//	Object textObject = Ui.GetTextObject(RectTransform);
-			//	//Debug.Log("set cursor " + err.index);
-			//	Ui.SetCursorPosition(textObject, err.index);
-			//} else {
-			//	RefreshRestOfRow();
-			//	ErrorState = false;
-			//}
-		}
-
-		public void RefreshRestOfRow() {
-			Row row = spreadsheet.rows[position.Row];
-			if (row.Cells[position.Column] != this) {
-				throw new System.Exception($"expected to be modifying {this}\nfound {row.Cells[position.Row]}");
-			}
-			row.Cells[position.Column] = null;
-			row.Refresh(spreadsheet);
-			row.Cells[position.Column] = this;
 		}
 
 		public void OnPointerMove(PointerEventData eventData) => spreadsheet.CellPointerMove(this);
