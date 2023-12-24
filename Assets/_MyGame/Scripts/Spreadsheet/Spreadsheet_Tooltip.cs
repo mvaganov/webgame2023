@@ -16,12 +16,34 @@ namespace Spreadsheet {
 		private RectTransform _tooltipUiElement;
 		private RectTransform _tooltipAnchor;
 		private Dictionary<CellPosition, List<MetaData>> cellMetaData = new Dictionary<CellPosition, List<MetaData>>();
+		private Dictionary<CellPosition, RectTransform> cellMetaDataPopup = new Dictionary<CellPosition, RectTransform>();
 
 		public void AddMetaData(CellPosition cellPosition, MetaData metaData) {
 			if (!cellMetaData.TryGetValue(cellPosition, out var metaList)) {
 				cellMetaData[cellPosition] = metaList = new List<MetaData> ();
 			}
 			metaList.Add(metaData);
+		}
+
+		private RectTransform GetMetaDataPopup(CellPosition position) {
+			Cell cell = GetCellUi(position);
+			if (cell == null) {
+				return null;
+			}
+			if (!cellMetaDataPopup.TryGetValue(position, out RectTransform tooltipElement)) {
+				Cell popup = cellGenerator.MakeNewCell(cellGenerator.PopupUiTypeIndex).Set(this, CellPosition.Invalid);
+				tooltipElement = popup.RectTransform;
+				RectTransform tooltipAnchor = new GameObject().AddComponent<RectTransform>();
+				tooltipAnchor.sizeDelta = Vector2.zero;
+				tooltipAnchor.anchorMin = tooltipElement.anchorMin;
+				tooltipAnchor.anchorMax = tooltipElement.anchorMax;
+				FollowRectTransform followRect = tooltipElement.gameObject.AddComponent<FollowRectTransform>();
+				followRect.toFollow = tooltipAnchor;
+			} else {
+				tooltipElement.SetAsLastSibling();
+			}
+
+			return tooltipElement;
 		}
 
 		public void SetMetaData(Cell cell, MetaData metaData) {
