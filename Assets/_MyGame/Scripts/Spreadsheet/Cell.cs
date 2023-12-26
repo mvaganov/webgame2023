@@ -9,7 +9,7 @@ namespace Spreadsheet {
 	public class Cell : MonoBehaviour, IPointerDownHandler, IPointerMoveHandler, IPointerUpHandler {
 		private int _cellTypeIndex;
 		public CellPosition position;
-		public Spreadsheet spreadsheet;
+		public Spreadsheet _spreadsheet;
 
 		[SerializeField]
 		private bool _selected;
@@ -29,11 +29,35 @@ namespace Spreadsheet {
 
 		public int CellTypeIndex => _cellTypeIndex;
 
+		public Spreadsheet spreadsheet {
+			get => _spreadsheet;
+			set {
+				_spreadsheet = value;
+				UpdateTooltip();
+			}
+		}
+
 		public bool Interactable {
 			get => Ui.TryGetTextInputInteractable(this, out bool i) && i;
 			set {
 				Ui.TrySetTextInputInteractable(this, value);
 			}
+		}
+
+		private void OnEnable() {
+			UpdateTooltip();
+		}
+
+		private void OnDisable() {
+			ClearTooltip();
+		}
+
+		private void UpdateTooltip() {
+			// TODO if this cell has a spreadsheet, check if it has a tooltip. if it does, create the UI for it.
+		}
+
+		private void ClearTooltip() {
+			// TODO if this cell has a tooltip, release it
 		}
 
 		internal void Select() {

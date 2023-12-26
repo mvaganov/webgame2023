@@ -69,10 +69,10 @@ namespace Spreadsheet {
 			return new Vector2(x, y);
 		}
 
-		private RectTransform PlaceCell(Cell cell, Vector2 cursor) {
+		private RectTransform PlaceCell(Cell cell, Vector2 uiPosition) {
 			RectTransform rect = cell.RectTransform;
 			rect.SetParent(ContentArea);
-			rect.anchoredPosition = cursor;
+			rect.anchoredPosition = uiPosition;
 			int r = cell.position.Row;
 			int c = cell.position.Column;
 			rect.sizeDelta = new Vector2(columns[c].width, rows[r].height);

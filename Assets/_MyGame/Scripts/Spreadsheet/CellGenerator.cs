@@ -65,6 +65,7 @@ namespace Spreadsheet {
 			if (cell == null) { return; }
 			CellPosition cellPosition = cell.position;
 			RectTransform rect = cell.RectTransform;
+			cell.gameObject.SetActive(false);
 			Ui.SetText(rect, "");
 			//if (rect.parent != ContentArea) {
 			//	Debug.LogError($"is {cell} beign double-freed? parented to {rect.parent.name}, not {ContentArea.name}");
@@ -73,13 +74,11 @@ namespace Spreadsheet {
 				_transform = transform;
 			}
 			rect.SetParent(_transform);
-			cell.gameObject.SetActive(false);
 			if (cell.spreadsheet != null) {
 				cell.spreadsheet.AssignCell(cellPosition, null);
 				cell.spreadsheet = null;
 			}
 			s_preallocatedCellsByType[cell.CellTypeIndex].Add(cell);
 		}
-
 	}
 }
