@@ -28,24 +28,41 @@ namespace Spreadsheet {
 		private RectTransform _tooltipUiElement;
 		private RectTransform _tooltipAnchor;
 		private Dictionary<CellPosition, List<MetaData>> cellMetaData = new Dictionary<CellPosition, List<MetaData>>();
-		private Dictionary<CellPosition, MetaDataUiPair> cellMetaDataPopup = new Dictionary<CellPosition, MetaDataUiPair>();
+		private Dictionary<CellPosition, MetaDataUiPair> cellMetaDataUi = new Dictionary<CellPosition, MetaDataUiPair>();
+
+		public MetaDataUiPair GetMetaDataUiPair(CellPosition cellPosition) {
+			if (!cellMetaDataUi.TryGetValue(cellPosition, out MetaDataUiPair metaDataUiPair)) {
+				return null;
+			}
+			return metaDataUiPair;
+		}
 
 		public MetaDataUiPair AddMetaData(CellPosition cellPosition, MetaData metaData) {
 			if (!cellMetaData.TryGetValue(cellPosition, out var metaList)) {
 				cellMetaData[cellPosition] = metaList = new List<MetaData> ();
 			}
 			metaList.Add(metaData);
-			return GetMetaDataPopup(cellPosition);
+			return UpdateMetaDataUi(cellPosition);
 		}
 
-		private MetaDataUiPair GetMetaDataPopup(CellPosition position) {
+		public bool ClearMetaDataUi(CellPosition position) {
+			if (!cellMetaDataUi.TryGetValue(position, out MetaDataUiPair metaDataPair)) {
+				return false;
+			}
+			DestroyFunction(metaDataPair.tooltipElement.gameObject);
+			DestroyFunction(metaDataPair.tooltipAnchor.gameObject);
+			cellMetaDataUi.Remove(position);
+			return true;
+		}
+
+		public MetaDataUiPair UpdateMetaDataUi(CellPosition position) {
 			Cell cell = GetCellUi(position);
 			if (cell == null) {
 				return null;
 			}
 			RectTransform cellRectTransform = cell.GetComponent<RectTransform>();
-			if (!cellMetaDataPopup.TryGetValue(position, out MetaDataUiPair metaDataPair)) {
-				cellMetaDataPopup[position] = metaDataPair = new MetaDataUiPair ();
+			if (!cellMetaDataUi.TryGetValue(position, out MetaDataUiPair metaDataPair)) {
+				cellMetaDataUi[position] = metaDataPair = new MetaDataUiPair ();
 				Cell popup = cellGenerator.MakeNewCell(cellGenerator.PopupUiTypeIndex).Set(this, CellPosition.Invalid);
 				metaDataPair.tooltipElement = popup.RectTransform;
 				metaDataPair.tooltipAnchor = new GameObject().AddComponent<RectTransform>();
@@ -57,7 +74,6 @@ namespace Spreadsheet {
 			} else {
 				metaDataPair.tooltipElement.SetAsLastSibling();
 			}
-
 			RectTransform popupRectTransform = metaDataPair.tooltipElement.GetComponent<RectTransform>();
 			cellMetaData.TryGetValue(position, out var metaList);
 			// TODO create some mechanism in the popup that allows it to scroll between the different meta datas

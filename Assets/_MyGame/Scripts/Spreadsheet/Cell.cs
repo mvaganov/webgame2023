@@ -53,11 +53,22 @@ namespace Spreadsheet {
 		}
 
 		private void UpdateTooltip() {
-			// TODO if this cell has a spreadsheet, check if it has a tooltip. if it does, create the UI for it.
+			if (spreadsheet == null) { return; }
+			Spreadsheet.MetaDataUiPair metaUiPair = spreadsheet.GetMetaDataUiPair(position);
+			if (metaUiPair != null) {
+				spreadsheet.UpdateMetaDataUi(position);
+			}
 		}
 
 		private void ClearTooltip() {
-			// TODO if this cell has a tooltip, release it
+			if (spreadsheet == null) {
+				Debug.Log("can't clear!");
+				return;
+			}
+			Spreadsheet.MetaDataUiPair metaUiPair = spreadsheet.GetMetaDataUiPair(position);
+			if (metaUiPair != null) {
+				spreadsheet.UpdateMetaDataUi(position);
+			}
 		}
 
 		internal void Select() {

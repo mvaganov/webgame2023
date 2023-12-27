@@ -56,8 +56,8 @@ namespace Spreadsheet {
 				}
 				cell.SetCellTypeIndex(typeIndex);
 			}
-			cell.gameObject.SetActive(true);
 			Ui.TrySetTextInputInteractable(cell.transform, false);
+			cell.gameObject.SetActive(true);
 			return cell;
 		}
 
