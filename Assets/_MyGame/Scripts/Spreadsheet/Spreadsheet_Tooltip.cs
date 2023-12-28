@@ -25,8 +25,8 @@ namespace Spreadsheet {
 			}
 		}
 
-		private RectTransform _tooltipUiElement;
-		private RectTransform _tooltipAnchor;
+		//private RectTransform _tooltipUiElement;
+		//private RectTransform _tooltipAnchor;
 		private Dictionary<CellPosition, List<MetaData>> cellMetaData = new Dictionary<CellPosition, List<MetaData>>();
 		private Dictionary<CellPosition, MetaDataUiPair> cellMetaDataUi = new Dictionary<CellPosition, MetaDataUiPair>();
 

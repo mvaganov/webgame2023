@@ -9,6 +9,7 @@ namespace Spreadsheet {
 		private bool _mouseIsHovering;
 		private bool _automaticallyFadeAway = true;
 		private float _timer;
+		[SerializeField] private bool _fade = false;
 		[SerializeField] private float _fadeTime = 1;
 		[SerializeField] private float _fadeTimeUnhovered = 8;
 		[SerializeField] private AnimationCurve _animationCurve;
@@ -65,7 +66,7 @@ namespace Spreadsheet {
 		}
 
 		void Update() {
-			if (_mouseIsHovering || !AutomaticallyFadeAway) { return; }
+			if (!_fade || _mouseIsHovering || !AutomaticallyFadeAway) { return; }
 			_timer += Time.deltaTime;
 			float timeLimit = _mouseHasHovered ? _fadeTime : _fadeTimeUnhovered;
 			float progress = _timer / timeLimit;
